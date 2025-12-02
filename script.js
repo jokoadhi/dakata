@@ -1,6 +1,6 @@
 document.addEventListener("DOMContentLoaded", () => {
-  // Pastikan variabel 'db' dan 'transactionsCollection' didefinisikan di <script> tag di index.html!
-  // Jika kode ini dijalankan sebelum inisialisasi Firebase, ia akan gagal.
+  // Variabel 'db' dan 'transactionsCollection' sudah didefinisikan
+  // di dalam tag <script> di index.html, setelah inisialisasi Firebase.
 
   const FISH_VARIETIES = [
     { id: "molly_zebra", name: "Molly Zebra" },
@@ -27,7 +27,7 @@ document.addEventListener("DOMContentLoaded", () => {
   const addFishBtn = document.getElementById("add-fish-btn");
 
   // -----------------------------------------------------
-  // Fungsi Utility untuk Input Ikan Dinamis (TIDAK BERUBAH)
+  // Fungsi Utility untuk Input Ikan Dinamis
   // -----------------------------------------------------
 
   function getFishOptionsHTML() {
@@ -40,7 +40,6 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   function addFishInput() {
-    // ... (fungsi addFishInput tetap sama, hanya untuk tampilan form) ...
     const id = Date.now();
     const fishInputHTML = `
             <div id="fish-row-${id}" class="flex space-x-2 items-end">
@@ -71,26 +70,37 @@ document.addEventListener("DOMContentLoaded", () => {
   addFishInput();
 
   // -----------------------------------------------------
-  // Fungsi Render Tampilan (DIUBAH UNTUK ASYNC)
+  // Fungsi Render Tampilan (Mengambil data dari Firestore)
   // -----------------------------------------------------
 
   async function fetchAndRenderTransactions() {
+    // Cek inisialisasi Firebase (menghindari error jika CDN gagal dimuat)
+    if (typeof transactionsCollection === "undefined") {
+      totalBalanceEl.textContent =
+        "IDR 0 (Gagal memuat Firebase. Cek koneksi.)";
+      return;
+    }
+
     try {
       // Mengambil data dari Firestore, diurutkan berdasarkan timestamp
       const snapshot = await transactionsCollection
         .orderBy("timestamp", "desc")
         .get();
       const transactions = snapshot.docs.map((doc) => ({
-        id: doc.id, // Menyimpan ID dokumen Firestore
+        id: doc.id,
         ...doc.data(),
       }));
 
-      // Mulai proses rendering (Sama seperti sebelumnya)
+      // Mulai proses rendering
       tableBody.innerHTML = "";
       let totalBalance = 0;
 
       transactions.forEach((tx, index) => {
-        const totalTransactionValue = tx.packagePrice + tx.shippingCost;
+        // Gunakan 0 jika properti tidak ada (untuk kompatibilitas data lama jika ada)
+        const packagePrice = tx.packagePrice || 0;
+        const shippingCost = tx.shippingCost || 0;
+
+        const totalTransactionValue = packagePrice + shippingCost;
 
         if (tx.type === "sale") {
           totalBalance += totalTransactionValue;
@@ -98,7 +108,10 @@ document.addEventListener("DOMContentLoaded", () => {
           totalBalance -= totalTransactionValue;
         }
 
-        const fishDetails = tx.packageContent
+        // Menangani jika packageContent hilang
+        const packageContent = tx.packageContent || [];
+
+        const fishDetails = packageContent
           .map((item) => {
             const fishName =
               FISH_VARIETIES.find((f) => f.id === item.type)?.name || item.type;
@@ -106,30 +119,33 @@ document.addEventListener("DOMContentLoaded", () => {
           })
           .join(", ");
 
+        // Menangani konversi Timestamp dari Firebase
+        let dateToDisplay = "N/A";
+        if (tx.timestamp && typeof tx.timestamp.toDate === "function") {
+          dateToDisplay = new Date(tx.timestamp.toDate()).toLocaleString();
+        } else if (tx.timestamp) {
+          // Jika timestamp adalah angka biasa (dari Local Storage/Data lama)
+          dateToDisplay = new Date(tx.timestamp).toLocaleString();
+        }
+
         const row = tableBody.insertRow();
         const typeClass =
           tx.type === "sale" ? "text-green-600" : "text-red-600";
 
         row.innerHTML = `
-                    <td class="py-3 px-6 whitespace-nowrap">${new Date(
-                      tx.timestamp.toDate()
-                    ).toLocaleString()}</td>
+                    <td class="py-3 px-6 whitespace-nowrap">${dateToDisplay}</td>
                     <td class="py-3 px-6 whitespace-nowrap font-semibold ${typeClass}">${
           tx.type === "sale" ? "JUAL" : "BELI"
         }</td>
                     <td class="py-3 px-6 text-sm">
-                        Isi: ${fishDetails} <br>
+                        Isi: ${fishDetails || "-"} <br>
                         <span class="font-semibold">Tujuan:</span> ${
-                          tx.destination
+                          tx.destination || "-"
                         } 
                     </td>
                     <td class="py-3 px-6 whitespace-nowrap font-bold">
-                        Paket: IDR ${tx.packagePrice.toLocaleString(
-                          "id-ID"
-                        )} <br>
-                        Ongkir: IDR ${tx.shippingCost.toLocaleString(
-                          "id-ID"
-                        )} <br>
+                        Paket: IDR ${packagePrice.toLocaleString("id-ID")} <br>
+                        Ongkir: IDR ${shippingCost.toLocaleString("id-ID")} <br>
                         <hr class="my-1 border-gray-300">
                         <span class="${typeClass}">TOTAL: IDR ${totalTransactionValue.toLocaleString(
           "id-ID"
@@ -160,16 +176,24 @@ document.addEventListener("DOMContentLoaded", () => {
     } catch (error) {
       console.error("Error fetching transactions: ", error);
       alert(
-        "Gagal memuat data dari database. Cek koneksi dan aturan Firebase."
+        "Gagal memuat data dari database. Cek koneksi dan aturan Firebase (Rules)."
       );
     }
   }
 
   // -----------------------------------------------------
-  // Event Handler Form Submission (DIUBAH UNTUK ASYNC)
+  // Event Handler Form Submission
   // -----------------------------------------------------
   form.addEventListener("submit", async (e) => {
     e.preventDefault();
+
+    // Validasi Firebase
+    if (typeof transactionsCollection === "undefined") {
+      alert(
+        "Sistem database tidak siap. Harap muat ulang halaman atau cek konfigurasi Firebase."
+      );
+      return;
+    }
 
     const packagePrice = parseFloat(
       document.getElementById("package_price").value
@@ -184,8 +208,6 @@ document.addEventListener("DOMContentLoaded", () => {
 
     const packageContent = [];
 
-    // Kumpulkan data isi paket
-    // ... (kode ini tetap sama) ...
     for (let i = 0; i < fishTypes.length; i++) {
       const type = fishTypes[i].value;
       const count = parseInt(fishCounts[i].value);
@@ -211,7 +233,7 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     const newTransaction = {
-      timestamp: firebase.firestore.FieldValue.serverTimestamp(), // Gunakan timestamp dari server
+      timestamp: firebase.firestore.FieldValue.serverTimestamp(),
       type: document.getElementById("type").value,
       packagePrice: packagePrice,
       shippingCost: shippingCost,
@@ -219,21 +241,20 @@ document.addEventListener("DOMContentLoaded", () => {
       packageContent: packageContent,
     };
 
-    // --- GANTI LOCAL STORAGE DENGAN FIREBASE ---
     try {
       await transactionsCollection.add(newTransaction);
-      alert("Transaksi berhasil dicatat ke Firebase!");
     } catch (error) {
       console.error("Error adding document: ", error);
-      alert("Gagal menyimpan transaksi. Cek konfigurasi Firebase Anda.");
+      alert(
+        "Gagal menyimpan transaksi. Cek konfigurasi dan aturan Firebase Anda."
+      );
       return;
     }
-    // -------------------------------------------
 
-    // Render ulang tampilan
+    // Render ulang tampilan dengan data terbaru dari Firebase
     fetchAndRenderTransactions();
 
-    // Reset form input dinamis dan utama
+    // Reset form
     form.reset();
     packageContainer.innerHTML = "";
     addFishInput();
