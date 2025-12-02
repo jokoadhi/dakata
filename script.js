@@ -26,12 +26,12 @@ document.addEventListener("DOMContentLoaded", () => {
   const formTitle = document.getElementById("form-title");
   const editModeControls = document.getElementById("edit-mode-controls");
 
-  // VARIABEL UNTUK MODE EDIT
+  // Variabel untuk Mode Edit
   let isEditMode = false;
   let currentEditId = null;
 
   // -----------------------------------------------------
-  // FUNGSI UTILITY (FISH INPUT)
+  // FUNGSI UTILITY (FISH INPUT) - KODE TETAP SAMA
   // -----------------------------------------------------
 
   function getFishOptionsHTML(selectedValue = "") {
@@ -40,29 +40,25 @@ document.addEventListener("DOMContentLoaded", () => {
       const selected = fish.id === selectedValue ? "selected" : "";
       options += `<option value="${fish.id}" ${selected}>${fish.name}</option>`;
     });
-    // OPSI BARU: LAINNYA
     const otherSelected = selectedValue === "other" ? "selected" : "";
     options += `<option value="other" ${otherSelected}>Lainnya (Input Teks)</option>`;
     return options;
   }
 
-  // Menghapus semua input ikan yang ada
   function deleteFishInputs() {
     packageContainer.innerHTML = "";
   }
 
-  // Merender input ikan dari data transaksi (digunakan saat Edit)
   function renderFishInputs(packageContent) {
     deleteFishInputs();
-
+    // ... (kode render input ikan tetap sama) ...
     if (packageContent && packageContent.length > 0) {
       packageContent.forEach((item) => {
         const id = Date.now() + Math.random();
 
-        // Cek apakah item ini adalah "Lainnya" yang sudah disimpan
         const isOther = item.type.startsWith("other:");
         const selectedType = isOther ? "other" : item.type;
-        const otherValue = isOther ? item.type.substring(6) : ""; // Ambil teks setelah 'other:'
+        const otherValue = isOther ? item.type.substring(6) : "";
 
         const fishInputHTML = `
                     <div id="fish-row-${id}" class="flex space-x-2 items-end">
@@ -94,7 +90,6 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   }
 
-  // Menambahkan satu baris input ikan baru
   function addFishInput(initialType = "") {
     const id = Date.now() + Math.random();
     const fishInputHTML = `
@@ -115,22 +110,18 @@ document.addEventListener("DOMContentLoaded", () => {
     packageContainer.insertAdjacentHTML("beforeend", fishInputHTML);
   }
 
-  // -----------------------------------------------------
-  // LOGIKA PENANGANAN INPUT LAINNYA (Teks Bebas)
-  // -----------------------------------------------------
+  // ... (Logika penanganan input lainnya tetap sama) ...
   packageContainer.addEventListener("change", (e) => {
     if (e.target.classList.contains("fish-type")) {
       const selectEl = e.target;
       const parentDiv = selectEl.parentElement;
 
-      // Hapus input 'other' yang mungkin sudah ada
       let existingInput = parentDiv.querySelector(".other-input");
       if (existingInput) {
         existingInput.remove();
       }
 
       if (selectEl.value === "other") {
-        // Tambahkan input teks baru
         const otherInputHTML = `
                     <input type="text" placeholder="Isi Lainnya..." class="other-input mt-2 shadow border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" required>
                 `;
@@ -139,7 +130,6 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   });
 
-  // Menghapus baris input ikan saat tombol "Hapus" diklik
   packageContainer.addEventListener("click", (e) => {
     if (e.target.classList.contains("remove-fish-btn")) {
       const rowId = e.target.dataset.rowId;
@@ -150,40 +140,62 @@ document.addEventListener("DOMContentLoaded", () => {
   addFishBtn.addEventListener("click", addFishInput);
 
   // -----------------------------------------------------
-  // LOGIKA CRUD: DELETE (TIDAK BERUBAH)
+  // LOGIKA CRUD: DELETE (MENGGUNAKAN SWEETALERT)
   // -----------------------------------------------------
   window.deleteTransaction = async function (id) {
-    if (
-      !confirm(
-        "Apakah Anda yakin ingin menghapus transaksi ini secara permanen?"
-      )
-    ) {
+    const result = await Swal.fire({
+      title: "Konfirmasi Hapus",
+      text: "Apakah Anda yakin ingin menghapus transaksi ini secara permanen? Tindakan ini tidak dapat dibatalkan.",
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonColor: "#d33",
+      cancelButtonColor: "#3085d6",
+      confirmButtonText: "Ya, Hapus!",
+      cancelButtonText: "Batal",
+    });
+
+    if (!result.isConfirmed) {
       return;
     }
+
     try {
       await transactionsCollection.doc(id).delete();
-      alert("Transaksi berhasil dihapus.");
+
+      Swal.fire({
+        title: "Dihapus!",
+        text: "Transaksi berhasil dihapus.",
+        icon: "success",
+      });
+
       fetchAndRenderTransactions();
     } catch (error) {
       console.error("Error removing document: ", error);
-      alert("Gagal menghapus transaksi. Cek koneksi atau aturan Firebase.");
+
+      Swal.fire({
+        title: "Gagal!",
+        text: "Gagal menghapus transaksi. Cek koneksi atau aturan Firebase.",
+        icon: "error",
+      });
     }
   };
 
   // -----------------------------------------------------
-  // LOGIKA CRUD: EDIT / SETUP EDIT MODE (TIDAK BERUBAH)
+  // LOGIKA CRUD: EDIT / SETUP EDIT MODE
   // -----------------------------------------------------
   window.editTransaction = async function (id) {
     try {
       const doc = await transactionsCollection.doc(id).get();
       if (!doc.exists) {
-        alert("Transaksi tidak ditemukan.");
+        Swal.fire({
+          title: "Error",
+          text: "Transaksi tidak ditemukan.",
+          icon: "error",
+        });
         return;
       }
-
+      // ... (Kode mengisi form tetap sama) ...
       const tx = doc.data();
 
-      // 1. Set Mode Edit
       isEditMode = true;
       currentEditId = id;
       submitBtn.textContent = "Simpan Perubahan Transaksi";
@@ -192,26 +204,27 @@ document.addEventListener("DOMContentLoaded", () => {
       formTitle.textContent = `Edit Transaksi (ID: ${id.substring(0, 5)}...)`;
       editModeControls.classList.remove("hidden");
 
-      // 2. Isi Form Utama
       document.getElementById("type").value = tx.type;
       document.getElementById("package_price").value = tx.packagePrice || 0;
       document.getElementById("shipping_cost").value = tx.shippingCost || 0;
       document.getElementById("destination").value = tx.destination || "";
       document.getElementById("client_name").value = tx.clientName || "";
 
-      // 3. Isi Input Ikan Dinamis
       renderFishInputs(tx.packageContent);
 
-      // 4. Scroll ke atas agar user bisa melihat form
       window.scrollTo({ top: 0, behavior: "smooth" });
     } catch (error) {
       console.error("Error fetching document for edit: ", error);
-      alert("Gagal memuat data transaksi untuk diedit.");
+      Swal.fire({
+        title: "Error",
+        text: "Gagal memuat data transaksi untuk diedit.",
+        icon: "error",
+      });
     }
   };
 
   // -----------------------------------------------------
-  // LOGIKA RESET FORM (TIDAK BERUBAH)
+  // LOGIKA RESET FORM
   // -----------------------------------------------------
   window.resetForm = function () {
     isEditMode = false;
@@ -231,11 +244,17 @@ document.addEventListener("DOMContentLoaded", () => {
   };
 
   // -----------------------------------------------------
-  // Fungsi Render Tampilan (MENANGANI "OTHER" PADA DISPLAY)
+  // Fungsi Render Tampilan (TIDAK ADA PERUBAHAN)
   // -----------------------------------------------------
-
   async function fetchAndRenderTransactions() {
+    // ... (kode fetch dan render tetap sama) ...
     if (typeof transactionsCollection === "undefined") {
+      // Mengganti alert manual
+      Swal.fire({
+        title: "Koneksi Error",
+        text: "Gagal memuat Firebase. Cek koneksi.",
+        icon: "error",
+      });
       totalBalanceEl.textContent =
         "IDR 0 (Gagal memuat Firebase. Cek koneksi.)";
       return;
@@ -257,7 +276,6 @@ document.addEventListener("DOMContentLoaded", () => {
         const packagePrice = tx.packagePrice || 0;
         const shippingCost = tx.shippingCost || 0;
 
-        // Saldo: Hanya Harga Paket
         if (tx.type === "sale") {
           totalBalance += packagePrice;
         } else {
@@ -272,11 +290,9 @@ document.addEventListener("DOMContentLoaded", () => {
           .map((item) => {
             let itemName = item.type;
 
-            // Logic untuk menampilkan item "Lainnya"
             if (itemName.startsWith("other:")) {
-              itemName = itemName.substring(6); // Menghilangkan prefiks 'other:'
+              itemName = itemName.substring(6);
             } else {
-              // Untuk item yang ada di daftar FISH_VARIETIES
               itemName =
                 FISH_VARIETIES.find((f) => f.id === item.type)?.name ||
                 item.type;
@@ -337,7 +353,6 @@ document.addEventListener("DOMContentLoaded", () => {
         }
       });
 
-      // Update tampilan saldo
       totalBalanceEl.textContent = `IDR ${totalBalance.toLocaleString(
         "id-ID"
       )}`;
@@ -355,20 +370,26 @@ document.addEventListener("DOMContentLoaded", () => {
       }
     } catch (error) {
       console.error("Error fetching transactions: ", error);
-      alert(
-        "Gagal memuat data dari database. Cek koneksi dan aturan Firebase (Rules)."
-      );
+      Swal.fire({
+        title: "Koneksi Error",
+        text: "Gagal memuat data dari database. Cek koneksi dan aturan Firebase (Rules).",
+        icon: "error",
+      });
     }
   }
 
   // -----------------------------------------------------
-  // Event Handler Form Submission (HANDLE OTHER)
+  // Event Handler Form Submission (MENGGUNAKAN SWEETALERT)
   // -----------------------------------------------------
   form.addEventListener("submit", async (e) => {
     e.preventDefault();
 
     if (typeof transactionsCollection === "undefined") {
-      alert("Sistem database tidak siap.");
+      Swal.fire({
+        title: "Error",
+        text: "Sistem database tidak siap.",
+        icon: "error",
+      });
       return;
     }
 
@@ -384,7 +405,6 @@ document.addEventListener("DOMContentLoaded", () => {
     const fishRows = Array.from(packageContainer.children);
     const packageContent = [];
 
-    // Loop melalui setiap baris input ikan
     for (const row of fishRows) {
       const typeSelect = row.querySelector(".fish-type");
       const countInput = row.querySelector(".fish-count");
@@ -395,13 +415,15 @@ document.addEventListener("DOMContentLoaded", () => {
 
       let finalType = type;
 
-      // Logika baru untuk menangani input "Lainnya"
       if (type === "other") {
         if (otherInput && otherInput.value.trim()) {
-          // Gunakan prefiks 'other:' untuk menandai item ini di database
           finalType = "other:" + otherInput.value.trim();
         } else {
-          alert('Harap isi deskripsi untuk item "Lainnya".');
+          Swal.fire({
+            title: "Validasi",
+            text: 'Harap isi deskripsi untuk item "Lainnya".',
+            icon: "warning",
+          });
           return;
         }
       }
@@ -414,16 +436,21 @@ document.addEventListener("DOMContentLoaded", () => {
       }
     }
 
-    // ... (Validasi tetap sama) ...
     if (packageContent.length === 0) {
-      alert(
-        "Harap masukkan minimal satu jenis item dan jumlahnya dalam paket."
-      );
+      Swal.fire({
+        title: "Validasi",
+        text: "Harap masukkan minimal satu jenis item dan jumlahnya dalam paket.",
+        icon: "warning",
+      });
       return;
     }
 
     if (packagePrice <= 0 || isNaN(packagePrice)) {
-      alert("Harga Paket harus diisi dengan nilai yang valid.");
+      Swal.fire({
+        title: "Validasi",
+        text: "Harga Paket harus diisi dengan nilai yang valid.",
+        icon: "warning",
+      });
       return;
     }
 
@@ -438,27 +465,39 @@ document.addEventListener("DOMContentLoaded", () => {
 
     try {
       if (isEditMode && currentEditId) {
-        // MODE EDIT: Update Data
         await transactionsCollection.doc(currentEditId).update(transactionData);
-        alert("Transaksi berhasil diperbarui!");
+
+        Swal.fire({
+          title: "Berhasil!",
+          text: "Transaksi berhasil diperbarui.",
+          icon: "success",
+        });
+
         resetForm();
       } else {
-        // MODE CREATE: Tambah Data Baru
         transactionData.timestamp =
           firebase.firestore.FieldValue.serverTimestamp();
         await transactionsCollection.add(transactionData);
-        alert("Transaksi berhasil dicatat!");
+
+        Swal.fire({
+          title: "Berhasil!",
+          text: "Transaksi berhasil dicatat.",
+          icon: "success",
+        });
       }
     } catch (error) {
       console.error(
         `Error ${isEditMode ? "updating" : "adding"} document: `,
         error
       );
-      alert(
-        `Gagal ${
+
+      Swal.fire({
+        title: "Gagal!",
+        text: `Gagal ${
           isEditMode ? "memperbarui" : "menyimpan"
-        } transaksi. Cek konfigurasi dan aturan Firebase Anda.`
-      );
+        } transaksi. Cek konfigurasi dan aturan Firebase Anda.`,
+        icon: "error",
+      });
       return;
     }
 
