@@ -1,7 +1,7 @@
 document.addEventListener("DOMContentLoaded", () => {
-  // -----------------------------------------------------
-  // Daftar Varietas Ikan Molly Anda (Untuk Dropdown)
-  // -----------------------------------------------------
+  // Pastikan variabel 'db' dan 'transactionsCollection' didefinisikan di <script> tag di index.html!
+  // Jika kode ini dijalankan sebelum inisialisasi Firebase, ia akan gagal.
+
   const FISH_VARIETIES = [
     { id: "molly_zebra", name: "Molly Zebra" },
     { id: "molly_platinum_cawang", name: "Molly Platinum (Cawang)" },
@@ -14,7 +14,7 @@ document.addEventListener("DOMContentLoaded", () => {
     { id: "molly_sankis", name: "Molly Sankis" },
     { id: "molly_tiger", name: "Molly Tiger" },
     { id: "molly_leopard", name: "Molly Leopard" },
-    { id: "mix", name: "Mix (Campur)" },
+    { id: "mix", name: "Mix (Tidak Spesifik)" },
   ];
 
   // -----------------------------------------------------
@@ -26,14 +26,10 @@ document.addEventListener("DOMContentLoaded", () => {
   const packageContainer = document.getElementById("fish-package-container");
   const addFishBtn = document.getElementById("add-fish-btn");
 
-  // Memuat data dari Local Storage
-  let transactions = JSON.parse(localStorage.getItem("transactions")) || [];
-
   // -----------------------------------------------------
-  // Fungsi Utility untuk Input Ikan Dinamis
+  // Fungsi Utility untuk Input Ikan Dinamis (TIDAK BERUBAH)
   // -----------------------------------------------------
 
-  // Membuat HTML untuk opsi dropdown ikan
   function getFishOptionsHTML() {
     let options =
       '<option value="" disabled selected>Pilih Jenis Ikan</option>';
@@ -43,9 +39,9 @@ document.addEventListener("DOMContentLoaded", () => {
     return options;
   }
 
-  // Menambahkan baris input ikan ke form
   function addFishInput() {
-    const id = Date.now(); // ID unik untuk baris ini
+    // ... (fungsi addFishInput tetap sama, hanya untuk tampilan form) ...
+    const id = Date.now();
     const fishInputHTML = `
             <div id="fish-row-${id}" class="flex space-x-2 items-end">
                 <div class="flex-grow">
@@ -64,7 +60,6 @@ document.addEventListener("DOMContentLoaded", () => {
     packageContainer.insertAdjacentHTML("beforeend", fishInputHTML);
   }
 
-  // Event listener untuk tombol hapus baris ikan
   packageContainer.addEventListener("click", (e) => {
     if (e.target.classList.contains("remove-fish-btn")) {
       const rowId = e.target.dataset.rowId;
@@ -72,93 +67,108 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   });
 
-  // Event listener untuk tombol tambah ikan
   addFishBtn.addEventListener("click", addFishInput);
-
-  // Tambahkan input ikan pertama saat inisialisasi
   addFishInput();
 
   // -----------------------------------------------------
-  // Fungsi Render Tampilan
+  // Fungsi Render Tampilan (DIUBAH UNTUK ASYNC)
   // -----------------------------------------------------
 
-  function renderTransactions() {
-    tableBody.innerHTML = "";
-    let totalBalance = 0;
+  async function fetchAndRenderTransactions() {
+    try {
+      // Mengambil data dari Firestore, diurutkan berdasarkan timestamp
+      const snapshot = await transactionsCollection
+        .orderBy("timestamp", "desc")
+        .get();
+      const transactions = snapshot.docs.map((doc) => ({
+        id: doc.id, // Menyimpan ID dokumen Firestore
+        ...doc.data(),
+      }));
 
-    // Loop untuk menghitung saldo dan merender tabel
-    transactions.forEach((tx, index) => {
-      // HITUNG TOTAL NILAI TRANSAKSI (Harga Paket + Ongkir)
-      const totalTransactionValue = tx.packagePrice + tx.shippingCost;
+      // Mulai proses rendering (Sama seperti sebelumnya)
+      tableBody.innerHTML = "";
+      let totalBalance = 0;
 
-      if (tx.type === "sale") {
-        totalBalance += totalTransactionValue; // Penjualan menambah saldo
-      } else {
-        totalBalance -= totalTransactionValue; // Pembelian mengurangi saldo
-      }
+      transactions.forEach((tx, index) => {
+        const totalTransactionValue = tx.packagePrice + tx.shippingCost;
 
-      // Gabungkan detail ikan menjadi string untuk ditampilkan di tabel
-      const fishDetails = tx.packageContent
-        .map((item) => {
-          const fishName =
-            FISH_VARIETIES.find((f) => f.id === item.type)?.name || item.type;
-          return `${item.count}x ${fishName}`;
-        })
-        .join(", ");
+        if (tx.type === "sale") {
+          totalBalance += totalTransactionValue;
+        } else {
+          totalBalance -= totalTransactionValue;
+        }
 
-      const row = tableBody.insertRow();
-      const typeClass = tx.type === "sale" ? "text-green-600" : "text-red-600";
+        const fishDetails = tx.packageContent
+          .map((item) => {
+            const fishName =
+              FISH_VARIETIES.find((f) => f.id === item.type)?.name || item.type;
+            return `${item.count}x ${fishName}`;
+          })
+          .join(", ");
 
-      row.innerHTML = `
-                <td class="py-3 px-6 whitespace-nowrap">${new Date(
-                  tx.timestamp
-                ).toLocaleString()}</td>
-                <td class="py-3 px-6 whitespace-nowrap font-semibold ${typeClass}">${
-        tx.type === "sale" ? "JUAL" : "BELI"
-      }</td>
-                <td class="py-3 px-6 text-sm">
-                    Isi: ${fishDetails} <br>
-                    <span class="font-semibold">Tujuan:</span> ${
-                      tx.destination
-                    } 
-                </td>
-                <td class="py-3 px-6 whitespace-nowrap font-bold">
-                    Paket: IDR ${tx.packagePrice.toLocaleString("id-ID")} <br>
-                    Ongkir: IDR ${tx.shippingCost.toLocaleString("id-ID")} <br>
-                    <hr class="my-1 border-gray-300">
-                    <span class="${typeClass}">TOTAL: IDR ${totalTransactionValue.toLocaleString(
+        const row = tableBody.insertRow();
+        const typeClass =
+          tx.type === "sale" ? "text-green-600" : "text-red-600";
+
+        row.innerHTML = `
+                    <td class="py-3 px-6 whitespace-nowrap">${new Date(
+                      tx.timestamp.toDate()
+                    ).toLocaleString()}</td>
+                    <td class="py-3 px-6 whitespace-nowrap font-semibold ${typeClass}">${
+          tx.type === "sale" ? "JUAL" : "BELI"
+        }</td>
+                    <td class="py-3 px-6 text-sm">
+                        Isi: ${fishDetails} <br>
+                        <span class="font-semibold">Tujuan:</span> ${
+                          tx.destination
+                        } 
+                    </td>
+                    <td class="py-3 px-6 whitespace-nowrap font-bold">
+                        Paket: IDR ${tx.packagePrice.toLocaleString(
+                          "id-ID"
+                        )} <br>
+                        Ongkir: IDR ${tx.shippingCost.toLocaleString(
+                          "id-ID"
+                        )} <br>
+                        <hr class="my-1 border-gray-300">
+                        <span class="${typeClass}">TOTAL: IDR ${totalTransactionValue.toLocaleString(
+          "id-ID"
+        )}</span>
+                    </td>
+                `;
+        if (index % 2 === 0) {
+          row.classList.add("bg-gray-50");
+        }
+      });
+
+      // Update tampilan saldo
+      totalBalanceEl.textContent = `IDR ${totalBalance.toLocaleString(
         "id-ID"
-      )}</span>
-                </td>
-            `;
-      // Memberi warna latar selang-seling
-      if (index % 2 === 0) {
-        row.classList.add("bg-gray-50");
+      )}`;
+      totalBalanceEl.classList.remove(
+        "text-blue-600",
+        "text-green-600",
+        "text-red-600"
+      );
+      if (totalBalance < 0) {
+        totalBalanceEl.classList.add("text-red-600");
+      } else if (totalBalance > 0) {
+        totalBalanceEl.classList.add("text-green-600");
+      } else {
+        totalBalanceEl.classList.add("text-blue-600");
       }
-    });
-
-    // Update tampilan saldo
-    totalBalanceEl.textContent = `IDR ${totalBalance.toLocaleString("id-ID")}`;
-
-    // Update warna saldo
-    totalBalanceEl.classList.remove(
-      "text-blue-600",
-      "text-green-600",
-      "text-red-600"
-    );
-    if (totalBalance < 0) {
-      totalBalanceEl.classList.add("text-red-600");
-    } else if (totalBalance > 0) {
-      totalBalanceEl.classList.add("text-green-600");
-    } else {
-      totalBalanceEl.classList.add("text-blue-600");
+    } catch (error) {
+      console.error("Error fetching transactions: ", error);
+      alert(
+        "Gagal memuat data dari database. Cek koneksi dan aturan Firebase."
+      );
     }
   }
 
   // -----------------------------------------------------
-  // Event Handler Form Submission
+  // Event Handler Form Submission (DIUBAH UNTUK ASYNC)
   // -----------------------------------------------------
-  form.addEventListener("submit", (e) => {
+  form.addEventListener("submit", async (e) => {
     e.preventDefault();
 
     const packagePrice = parseFloat(
@@ -169,27 +179,25 @@ document.addEventListener("DOMContentLoaded", () => {
     );
     const destination = document.getElementById("destination").value.trim();
 
-    // Ambil semua data input ikan yang ada di form
     const fishTypes = Array.from(document.querySelectorAll(".fish-type"));
     const fishCounts = Array.from(document.querySelectorAll(".fish-count"));
 
     const packageContent = [];
 
-    // Kumpulkan data isi paket dari input dinamis
+    // Kumpulkan data isi paket
+    // ... (kode ini tetap sama) ...
     for (let i = 0; i < fishTypes.length; i++) {
       const type = fishTypes[i].value;
       const count = parseInt(fishCounts[i].value);
 
-      // Hanya masukkan item yang valid (terpilih dan jumlah > 0)
       if (type && count > 0 && !isNaN(count)) {
         packageContent.push({
-          type: type, // ID ikan
-          count: count, // Jumlah ikan dalam paket
+          type: type,
+          count: count,
         });
       }
     }
 
-    // Validasi minimal 1 jenis ikan dalam paket
     if (packageContent.length === 0) {
       alert(
         "Harap masukkan minimal satu jenis ikan dan jumlahnya dalam paket sebelum mencatat transaksi."
@@ -197,14 +205,13 @@ document.addEventListener("DOMContentLoaded", () => {
       return;
     }
 
-    // Validasi input harga
     if (packagePrice <= 0 || isNaN(packagePrice)) {
       alert("Harga Paket harus diisi dengan nilai yang valid.");
       return;
     }
 
     const newTransaction = {
-      timestamp: Date.now(),
+      timestamp: firebase.firestore.FieldValue.serverTimestamp(), // Gunakan timestamp dari server
       type: document.getElementById("type").value,
       packagePrice: packagePrice,
       shippingCost: shippingCost,
@@ -212,19 +219,26 @@ document.addEventListener("DOMContentLoaded", () => {
       packageContent: packageContent,
     };
 
-    // Simpan data
-    transactions.push(newTransaction);
-    localStorage.setItem("transactions", JSON.stringify(transactions));
+    // --- GANTI LOCAL STORAGE DENGAN FIREBASE ---
+    try {
+      await transactionsCollection.add(newTransaction);
+      alert("Transaksi berhasil dicatat ke Firebase!");
+    } catch (error) {
+      console.error("Error adding document: ", error);
+      alert("Gagal menyimpan transaksi. Cek konfigurasi Firebase Anda.");
+      return;
+    }
+    // -------------------------------------------
 
     // Render ulang tampilan
-    renderTransactions();
+    fetchAndRenderTransactions();
 
     // Reset form input dinamis dan utama
     form.reset();
     packageContainer.innerHTML = "";
-    addFishInput(); // Tambahkan input ikan pertama lagi
+    addFishInput();
   });
 
-  // Jalankan render saat halaman pertama kali dimuat
-  renderTransactions();
+  // Jalankan fetch saat halaman pertama kali dimuat
+  fetchAndRenderTransactions();
 });

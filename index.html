@@ -157,6 +157,25 @@
       </section>
     </div>
 
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore-compat.js"></script>
+    <script>
+      // Masukkan konfigurasi Firebase Anda di sini
+      const firebaseConfig = {
+        apiKey: "AIzaSyCbePfFexxDgKl_RaqmkBBZvTkmMl-Lxo8",
+        authDomain: "dakata-aquatic-mgmt.firebaseapp.com",
+        projectId: "dakata-aquatic-mgmt",
+        storageBucket: "dakata-aquatic-mgmt.firebasestorage.app",
+        messagingSenderId: "876940979120",
+        appId: "1:876940979120:web:14e8cfc7c025f731098475",
+      };
+
+      // Inisialisasi Firebase
+      firebase.initializeApp(firebaseConfig);
+      const db = firebase.firestore();
+      const transactionsCollection = db.collection("transactions");
+    </script>
+
     <script src="script.js"></script>
   </body>
 </html>
