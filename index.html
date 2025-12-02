@@ -105,12 +105,6 @@
                 Manajemen Keuangan DAKATA Aquatic
               </h1>
             </div>
-            <button
-              id="logout-btn"
-              class="absolute top-4 right-4 bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded transition duration-150 text-sm"
-            >
-              Logout
-            </button>
           </div>
         </header>
 
@@ -133,10 +127,18 @@
         </section>
 
         <section class="bg-white p-6 rounded-lg shadow-lg mb-8">
-          <h2 id="form-title" class="text-2xl font-semibold mb-4 text-gray-800">
-            Input Transaksi Baru
-          </h2>
+          <div class="flex justify-between items-center mb-4">
+            <h2 id="form-title" class="text-2xl font-semibold text-gray-800">
+              Input Transaksi Baru
+            </h2>
 
+            <button
+              id="logout-btn"
+              class="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded transition duration-150 text-sm"
+            >
+              Logout
+            </button>
+          </div>
           <div
             id="edit-mode-controls"
             class="mb-4 p-3 bg-yellow-100 border border-yellow-400 rounded hidden"
@@ -265,7 +267,6 @@
             </div>
           </form>
         </section>
-
         <section class="bg-white p-6 rounded-lg shadow-lg">
           <h2 class="text-2xl font-semibold mb-4 text-gray-800">
             Riwayat Transaksi
