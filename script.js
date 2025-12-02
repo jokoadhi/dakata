@@ -31,7 +31,7 @@ document.addEventListener("DOMContentLoaded", () => {
   let currentEditId = null;
 
   // -----------------------------------------------------
-  // FUNGSI UTILITY (FISH INPUT) - KODE TETAP SAMA
+  // FUNGSI UTILITY (FISH INPUT)
   // -----------------------------------------------------
 
   function getFishOptionsHTML(selectedValue = "") {
@@ -40,6 +40,7 @@ document.addEventListener("DOMContentLoaded", () => {
       const selected = fish.id === selectedValue ? "selected" : "";
       options += `<option value="${fish.id}" ${selected}>${fish.name}</option>`;
     });
+    // OPSI LAINNYA
     const otherSelected = selectedValue === "other" ? "selected" : "";
     options += `<option value="other" ${otherSelected}>Lainnya (Input Teks)</option>`;
     return options;
@@ -51,7 +52,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   function renderFishInputs(packageContent) {
     deleteFishInputs();
-    // ... (kode render input ikan tetap sama) ...
+
     if (packageContent && packageContent.length > 0) {
       packageContent.forEach((item) => {
         const id = Date.now() + Math.random();
@@ -110,7 +111,9 @@ document.addEventListener("DOMContentLoaded", () => {
     packageContainer.insertAdjacentHTML("beforeend", fishInputHTML);
   }
 
-  // ... (Logika penanganan input lainnya tetap sama) ...
+  // -----------------------------------------------------
+  // LOGIKA PENANGANAN INPUT LAINNYA (Teks Bebas)
+  // -----------------------------------------------------
   packageContainer.addEventListener("change", (e) => {
     if (e.target.classList.contains("fish-type")) {
       const selectEl = e.target;
@@ -180,6 +183,142 @@ document.addEventListener("DOMContentLoaded", () => {
   };
 
   // -----------------------------------------------------
+  // LOGIKA PEMBUATAN NOTA/INVOICE (TANPA HARGA PER UNIT)
+  // -----------------------------------------------------
+  window.generateInvoice = async function (id) {
+    try {
+      const doc = await transactionsCollection.doc(id).get();
+      if (!doc.exists) {
+        Swal.fire({
+          title: "Error",
+          text: "Transaksi tidak ditemukan.",
+          icon: "error",
+        });
+        return;
+      }
+
+      const tx = doc.data();
+      const packageContent = tx.packageContent || [];
+
+      const destination = tx.destination || "-";
+      const clientName = tx.clientName || "-";
+      const packagePrice = tx.packagePrice || 0;
+      const shippingCost = tx.shippingCost || 0;
+      const totalAmount = packagePrice + shippingCost;
+
+      let dateToDisplay = new Date().toLocaleDateString("id-ID", {
+        day: "2-digit",
+        month: "long",
+        year: "numeric",
+      });
+      if (tx.timestamp && typeof tx.timestamp.toDate === "function") {
+        dateToDisplay = tx.timestamp.toDate().toLocaleDateString("id-ID", {
+          day: "2-digit",
+          month: "long",
+          year: "numeric",
+        });
+      }
+
+      // 1. Buat detail item (Isi Paket) untuk tabel invoice
+      let itemDetailsHTML = "";
+
+      packageContent.forEach((item, index) => {
+        let itemName = item.type;
+        if (itemName.startsWith("other:")) {
+          itemName = item.type.substring(6);
+        } else {
+          itemName =
+            FISH_VARIETIES.find((f) => f.id === item.type)?.name || item.type;
+        }
+
+        itemDetailsHTML += `
+                    <tr>
+                        <td>${index + 1}</td>
+                        <td>${itemName}</td>
+                        <td>${item.count}</td>
+                    </tr>
+                `;
+      });
+
+      // 2. Template HTML untuk Invoice (Menghilangkan kolom harga per unit)
+      const invoiceHTML = `
+                <html>
+                <head>
+                    <title>Nota Transaksi #${id.substring(0, 8)}</title>
+                    <style>
+                        body { font-family: Arial, sans-serif; font-size: 12px; margin: 30px; }
+                        .container { width: 100%; max-width: 600px; margin: 0 auto; border: 1px solid #ccc; padding: 20px; }
+                        h2 { text-align: center; margin-bottom: 20px; }
+                        table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
+                        th, td { border: 1px solid #eee; padding: 8px; text-align: left; }
+                        th { background-color: #f4f4f4; }
+                        .header-info, .total { margin-bottom: 15px; }
+                        .total p { text-align: right; margin: 5px 0; }
+                    </style>
+                </head>
+                <body>
+                    <div class="container">
+                        <h2>NOTA TRANSAKSI ${
+                          tx.type === "sale" ? "PENJUALAN" : "PEMBELIAN"
+                        } <br> DAKATA Aquatic</h2>
+                        <div class="header-info">
+                            <p><strong>Nomor Nota:</strong> #${id.substring(
+                              0,
+                              8
+                            )}</p>
+                            <p><strong>Tanggal:</strong> ${dateToDisplay}</p>
+                            <p><strong>Kepada:</strong> ${clientName}</p>
+                            <p><strong>Tujuan Pengiriman:</strong> ${destination}</p>
+                        </div>
+
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th style="width: 5%;">No.</th>
+                                    <th>Deskripsi Item (Isi Paket)</th>
+                                    <th style="width: 15%;">Jumlah</th>
+                                    </tr>
+                            </thead>
+                            <tbody>
+                                ${itemDetailsHTML}
+                            </tbody>
+                        </table>
+
+                        <div class="total">
+                            <p><strong>Subtotal (Harga Paket):</strong> IDR ${packagePrice.toLocaleString(
+                              "id-ID"
+                            )}</p>
+                            <p><strong>Biaya Kirim (Ongkir):</strong> IDR ${shippingCost.toLocaleString(
+                              "id-ID"
+                            )}</p>
+                            <hr style="border-top: 1px solid #000; margin: 5px 0;">
+                            <p><strong>TOTAL AKHIR:</strong> IDR ${totalAmount.toLocaleString(
+                              "id-ID"
+                            )}</p>
+                        </div>
+
+                        <p style="text-align: center; margin-top: 30px;">Terima kasih atas transaksinya.</p>
+                    </div>
+                </body>
+                </html>
+            `;
+
+      // 3. Buka jendela baru dan cetak
+      const printWindow = window.open("", "", "height=600,width=800");
+      printWindow.document.write(invoiceHTML);
+      printWindow.document.close();
+      printWindow.print();
+    } catch (error) {
+      console.error("Error generating invoice: ", error);
+      Swal.fire({
+        title: "Error",
+        text: "Gagal membuat nota. Periksa data transaksi atau koneksi Anda.",
+        icon: "error",
+      });
+    }
+  };
+
+  // -----------------------------------------------------
   // LOGIKA CRUD: EDIT / SETUP EDIT MODE
   // -----------------------------------------------------
   window.editTransaction = async function (id) {
@@ -193,7 +332,6 @@ document.addEventListener("DOMContentLoaded", () => {
         });
         return;
       }
-      // ... (Kode mengisi form tetap sama) ...
       const tx = doc.data();
 
       isEditMode = true;
@@ -231,25 +369,22 @@ document.addEventListener("DOMContentLoaded", () => {
     currentEditId = null;
     form.reset();
 
-    // Reset tampilan form
     submitBtn.textContent = "Catat Transaksi Paket";
     submitBtn.classList.remove("bg-blue-500", "hover:bg-blue-700");
     submitBtn.classList.add("bg-green-500", "hover:bg-green-700");
     formTitle.textContent = "Input Transaksi Baru (Paket)";
     editModeControls.classList.add("hidden");
 
-    // Reset input ikan
     deleteFishInputs();
     addFishInput();
   };
 
   // -----------------------------------------------------
-  // Fungsi Render Tampilan (TIDAK ADA PERUBAHAN)
+  // Fungsi Render Tampilan & Perhitungan Saldo
   // -----------------------------------------------------
+
   async function fetchAndRenderTransactions() {
-    // ... (kode fetch dan render tetap sama) ...
     if (typeof transactionsCollection === "undefined") {
-      // Mengganti alert manual
       Swal.fire({
         title: "Koneksi Error",
         text: "Gagal memuat Firebase. Cek koneksi.",
@@ -276,6 +411,7 @@ document.addEventListener("DOMContentLoaded", () => {
         const packagePrice = tx.packagePrice || 0;
         const shippingCost = tx.shippingCost || 0;
 
+        // SALDO HANYA DARI HARGA PAKET
         if (tx.type === "sale") {
           totalBalance += packagePrice;
         } else {
@@ -291,7 +427,7 @@ document.addEventListener("DOMContentLoaded", () => {
             let itemName = item.type;
 
             if (itemName.startsWith("other:")) {
-              itemName = itemName.substring(6);
+              itemName = item.type.substring(6);
             } else {
               itemName =
                 FISH_VARIETIES.find((f) => f.id === item.type)?.name ||
@@ -341,6 +477,11 @@ document.addEventListener("DOMContentLoaded", () => {
                         }')" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-1 px-3 rounded text-sm focus:outline-none focus:shadow-outline mr-2">
                             Edit
                         </button>
+                        <button onclick="generateInvoice('${
+                          tx.id
+                        }')" class="bg-yellow-500 hover:bg-yellow-700 text-white font-bold py-1 px-3 rounded text-sm focus:outline-none focus:shadow-outline mr-2">
+                            Nota
+                        </button>
                         <button onclick="deleteTransaction('${
                           tx.id
                         }')" class="bg-red-500 hover:bg-red-700 text-white font-bold py-1 px-3 rounded text-sm focus:outline-none focus:shadow-outline">
@@ -379,7 +520,7 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   // -----------------------------------------------------
-  // Event Handler Form Submission (MENGGUNAKAN SWEETALERT)
+  // Event Handler Form Submission
   // -----------------------------------------------------
   form.addEventListener("submit", async (e) => {
     e.preventDefault();
