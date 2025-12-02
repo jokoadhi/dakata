@@ -8,203 +8,12 @@
 
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="style.css" />
-  </head>
-  <body class="bg-gray-100 font-sans leading-normal tracking-normal">
-    <div class="container mx-auto p-4 md:p-8">
-      <header
-        class="bg-white p-6 rounded-lg shadow-lg mb-8 relative overflow-hidden"
-        style="
-          color: #1f2937; /* text-gray-800 */
-          background-image: url('bg.jpeg'); /* GANTI DENGAN NAMA FILE BACKGROUND ANDA */
-          background-size: cover;
-          background-position: center;
-          min-height: 150px;
-        "
-      >
-        <div class="h-full flex flex-col justify-center items-center">
-          <div class="flex items-center space-x-4 text-center">
-            <img
-              src="logo.png"
-              alt="DAKATA Aquatic Logo"
-              class="h-20 w-20 object-contain"
-            />
-            <h1 class="text-3xl font-bold">
-              Manajemen Keuangan DAKATA Aquatic
-            </h1>
-          </div>
-        </div>
-      </header>
-
-      <section class="bg-white p-6 rounded-lg shadow-lg mb-8">
-        <h2 id="form-title" class="text-2xl font-semibold mb-4 text-gray-800">
-          Input Transaksi Baru
-        </h2>
-
-        <div id="edit-mode-controls" class="mb-4 hidden">
-          <button
-            type="button"
-            onclick="resetForm()"
-            class="bg-yellow-500 hover:bg-yellow-700 text-white font-bold py-1 px-3 rounded text-sm focus:outline-none focus:shadow-outline"
-          >
-            Batalkan Edit
-          </button>
-        </div>
-
-        <form
-          id="transaction-form"
-          class="grid grid-cols-1 md:grid-cols-3 gap-4"
-        >
-          <div>
-            <label for="type" class="block text-gray-700 text-sm font-bold mb-2"
-              >Jenis Transaksi:</label
-            >
-            <select
-              id="type"
-              class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-              required
-            >
-              <option value="sale">Penjualan</option>
-              <option value="purchase">Pembelian</option>
-            </select>
-          </div>
-
-          <div>
-            <label
-              for="package_price"
-              class="block text-gray-700 text-sm font-bold mb-2"
-              >Harga Paket (IDR):</label
-            >
-            <input
-              type="number"
-              id="package_price"
-              class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-              min="1"
-              placeholder="Cth: 50000"
-              required
-            />
-          </div>
-
-          <div>
-            <label
-              for="destination"
-              class="block text-gray-700 text-sm font-bold mb-2"
-              >Tujuan Pengiriman:</label
-            >
-            <input
-              type="text"
-              id="destination"
-              class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-              placeholder="Cth: Jakarta Pusat"
-              required
-            />
-          </div>
-
-          <div class="md:col-span-3">
-            <label
-              for="client_name"
-              class="block text-gray-700 text-sm font-bold mb-2"
-              >Atas Nama:</label
-            >
-            <input
-              type="text"
-              id="client_name"
-              class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-              placeholder="Cth: Rudi"
-              required
-            />
-          </div>
-
-          <div class="md:col-span-3">
-            <label
-              for="shipping_cost"
-              class="block text-gray-700 text-sm font-bold mb-2"
-              >Biaya Ongkir (IDR):</label
-            >
-            <input
-              type="number"
-              id="shipping_cost"
-              class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-              min="0"
-              placeholder="Cth: 15000"
-              required
-            />
-          </div>
-
-          <div class="md:col-span-3">
-            <label class="block text-gray-700 text-sm font-bold mb-2"
-              >Isi Paket (Jenis & Jumlah Ikan):</label
-            >
-
-            <div
-              id="fish-package-container"
-              class="space-y-3 p-3 border border-gray-200 rounded-md bg-gray-50"
-            ></div>
-
-            <button
-              type="button"
-              id="add-fish-btn"
-              class="mt-3 bg-indigo-500 hover:bg-indigo-700 text-white text-sm font-bold py-1 px-3 rounded focus:outline-none focus:shadow-outline"
-            >
-              + Tambah Jenis Ikan ke Paket
-            </button>
-          </div>
-
-          <div class="md:col-span-3 mt-4">
-            <button
-              type="submit"
-              id="submit-btn"
-              class="bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline w-full"
-            >
-              Catat Transaksi
-            </button>
-          </div>
-        </form>
-      </section>
-
-      <section class="bg-white p-6 rounded-lg shadow-lg mb-8">
-        <h2 class="text-2xl font-semibold mb-4 text-gray-800 text-center">
-          Ringkasan Keuangan
-        </h2>
-        <div
-          class="flex flex-col md:flex-row justify-around items-center text-xl font-medium"
-        >
-          <p class="mb-2 md:mb-0 text-center">
-            Total Saldo:
-            <span id="total-balance" class="text-blue-600 font-bold"
-              >IDR 0</span
-            >
-          </p>
-        </div>
-      </section>
-
-      <section class="bg-white p-6 rounded-lg shadow-lg">
-        <h2 class="text-2xl font-semibold mb-4 text-gray-800">
-          Riwayat Transaksi
-        </h2>
-        <div class="overflow-x-auto">
-          <table
-            id="history-table"
-            class="min-w-full bg-white border border-gray-200"
-          >
-            <thead>
-              <tr
-                class="bg-gray-200 text-gray-600 uppercase text-sm leading-normal"
-              >
-                <th class="py-3 px-6 text-left">Waktu</th>
-                <th class="py-3 px-6 text-left">Jenis</th>
-                <th class="py-3 px-6 text-left">Detail Paket & Tujuan</th>
-                <th class="py-3 px-6 text-left">Total Nilai Transaksi</th>
-                <th class="py-3 px-6 text-center">Aksi</th>
-              </tr>
-            </thead>
-            <tbody class="text-gray-600 text-sm font-light"></tbody>
-          </table>
-        </div>
-      </section>
-    </div>
 
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script>
+  </head>
+  <body class="bg-gray-100 font-sans leading-normal tracking-normal">
     <script>
       // Masukkan konfigurasi Firebase Anda di sini
       const firebaseConfig = {
@@ -220,7 +29,271 @@
       firebase.initializeApp(firebaseConfig);
       const db = firebase.firestore();
       const transactionsCollection = db.collection("transactions");
+      // Inisialisasi Auth
+      const auth = firebase.auth();
     </script>
+
+    <div
+      id="login-container"
+      class="max-w-md mx-auto mt-20 p-6 bg-white shadow-xl rounded-xl border border-blue-200"
+    >
+      <h2 class="text-3xl font-extrabold mb-6 text-center text-blue-700">
+        Login DAKATA Aquatic
+      </h2>
+      <form id="login-form">
+        <div class="mb-4">
+          <label
+            for="login-email"
+            class="block text-gray-700 font-semibold mb-2"
+            >Email</label
+          >
+          <input
+            type="email"
+            id="login-email"
+            class="shadow border rounded w-full py-3 px-4 text-gray-700 focus:ring-blue-500 focus:border-blue-500"
+            required
+          />
+        </div>
+        <div class="mb-6">
+          <label
+            for="login-password"
+            class="block text-gray-700 font-semibold mb-2"
+            >Password</label
+          >
+          <input
+            type="password"
+            id="login-password"
+            class="shadow border rounded w-full py-3 px-4 text-gray-700 focus:ring-blue-500 focus:border-blue-500"
+            required
+          />
+        </div>
+        <button
+          type="submit"
+          class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-lg w-full transition duration-150"
+        >
+          Masuk ke Aplikasi
+        </button>
+        <p
+          id="login-error"
+          class="text-red-500 text-sm italic mt-4 text-center hidden"
+        >
+          Email atau Password salah.
+        </p>
+      </form>
+    </div>
+
+    <div id="app-container" class="hidden">
+      <div class="container mx-auto p-4 md:p-8">
+        <header
+          class="bg-white p-6 rounded-lg shadow-lg mb-8 relative overflow-hidden"
+          style="
+            color: #1f2937; /* text-gray-800 */
+            background-image: url('bg.jpeg'); /* GANTI DENGAN NAMA FILE BACKGROUND ANDA */
+            background-size: cover;
+            background-position: center;
+            min-height: 150px;
+          "
+        >
+          <div class="h-full flex flex-col justify-center items-center">
+            <div class="flex items-center space-x-4 text-center">
+              <img
+                src="logo.png"
+                alt="DAKATA Aquatic Logo"
+                class="h-20 w-20 object-contain"
+              />
+              <h1 class="text-3xl font-bold">
+                Manajemen Keuangan DAKATA Aquatic
+              </h1>
+            </div>
+            <button
+              id="logout-btn"
+              class="absolute top-4 right-4 bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded transition duration-150 text-sm"
+            >
+              Logout
+            </button>
+          </div>
+        </header>
+
+        <section class="bg-white p-6 rounded-lg shadow-lg mb-8">
+          <h2 class="text-2xl font-semibold mb-4 text-gray-800 text-center">
+            Ringkasan Keuangan
+          </h2>
+          <div
+            class="flex flex-col md:flex-row justify-around items-center text-xl font-medium"
+          >
+            <p class="mb-2 md:mb-0 w-full text-center">
+              Total Saldo:
+              <span
+                id="total-balance"
+                class="text-blue-600 font-bold text-4xl block mt-2"
+                >IDR 0</span
+              >
+            </p>
+          </div>
+        </section>
+
+        <section class="bg-white p-6 rounded-lg shadow-lg mb-8">
+          <h2 id="form-title" class="text-2xl font-semibold mb-4 text-gray-800">
+            Input Transaksi Baru
+          </h2>
+
+          <div
+            id="edit-mode-controls"
+            class="mb-4 p-3 bg-yellow-100 border border-yellow-400 rounded hidden"
+          >
+            <p class="text-sm text-yellow-800 font-semibold mb-2">
+              Anda berada dalam Mode Edit.
+            </p>
+            <button
+              type="button"
+              onclick="resetForm()"
+              class="bg-yellow-600 hover:bg-yellow-700 text-white font-bold py-1 px-3 rounded text-sm focus:outline-none focus:shadow-outline"
+            >
+              Batalkan Edit
+            </button>
+          </div>
+
+          <form
+            id="transaction-form"
+            class="grid grid-cols-1 md:grid-cols-3 gap-4"
+          >
+            <div>
+              <label
+                for="type"
+                class="block text-gray-700 text-sm font-bold mb-2"
+                >Jenis Transaksi:</label
+              >
+              <select
+                id="type"
+                class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+                required
+              >
+                <option value="sale">Penjualan</option>
+                <option value="purchase">Pembelian</option>
+              </select>
+            </div>
+
+            <div>
+              <label
+                for="package_price"
+                class="block text-gray-700 text-sm font-bold mb-2"
+                >Harga (IDR):</label
+              >
+              <input
+                type="number"
+                id="package_price"
+                class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+                min="1"
+                placeholder="Cth: 50000"
+                required
+              />
+            </div>
+
+            <div>
+              <label
+                for="shipping_cost"
+                class="block text-gray-700 text-sm font-bold mb-2"
+                >Biaya Ongkir (IDR):</label
+              >
+              <input
+                type="number"
+                id="shipping_cost"
+                class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+                min="0"
+                placeholder="Cth: 15000"
+                required
+              />
+            </div>
+
+            <div class="md:col-span-3">
+              <label
+                for="client_name"
+                class="block text-gray-700 text-sm font-bold mb-2"
+                >Atas Nama:</label
+              >
+              <input
+                type="text"
+                id="client_name"
+                class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+                placeholder="Cth: Rudi"
+                required
+              />
+            </div>
+
+            <div class="md:col-span-3">
+              <label
+                for="destination"
+                class="block text-gray-700 text-sm font-bold mb-2"
+                >Tujuan Pengiriman:</label
+              >
+              <input
+                type="text"
+                id="destination"
+                class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+                placeholder="Cth: Jakarta Pusat"
+                required
+              />
+            </div>
+
+            <div class="md:col-span-3">
+              <label class="block text-gray-700 text-sm font-bold mb-2"
+                >Isi Paket (Jenis & Jumlah Ikan):</label
+              >
+
+              <div
+                id="fish-package-container"
+                class="space-y-3 p-3 border border-gray-200 rounded-md bg-gray-50"
+              ></div>
+
+              <button
+                type="button"
+                id="add-fish-btn"
+                class="mt-3 bg-indigo-500 hover:bg-indigo-700 text-white text-sm font-bold py-1 px-3 rounded focus:outline-none focus:shadow-outline"
+              >
+                + Tambah Jenis Ikan ke Paket
+              </button>
+            </div>
+
+            <div class="md:col-span-3 mt-4">
+              <button
+                type="submit"
+                id="submit-btn"
+                class="bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline w-full"
+              >
+                Catat Transaksi
+              </button>
+            </div>
+          </form>
+        </section>
+
+        <section class="bg-white p-6 rounded-lg shadow-lg">
+          <h2 class="text-2xl font-semibold mb-4 text-gray-800">
+            Riwayat Transaksi
+          </h2>
+          <div class="overflow-x-auto">
+            <table
+              id="history-table"
+              class="min-w-full bg-white border border-gray-200"
+            >
+              <thead>
+                <tr
+                  class="bg-gray-200 text-gray-600 uppercase text-sm leading-normal"
+                >
+                  <th class="py-3 px-6 text-left whitespace-nowrap">Waktu</th>
+                  <th class="py-3 px-6 text-left whitespace-nowrap">Jenis</th>
+                  <th class="py-3 px-6 text-left">Detail Paket & Tujuan</th>
+                  <th class="py-3 px-6 text-left whitespace-nowrap">
+                    Total Nilai Transaksi
+                  </th>
+                  <th class="py-3 px-6 text-center whitespace-nowrap">Aksi</th>
+                </tr>
+              </thead>
+              <tbody class="text-gray-600 text-sm font-light"></tbody>
+            </table>
+          </div>
+        </section>
+      </div>
+    </div>
 
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <script src="script.js"></script>
