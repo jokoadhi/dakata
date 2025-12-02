@@ -4,42 +4,58 @@ document.addEventListener("DOMContentLoaded", () => {
   const tableBody = document.querySelector("#history-table tbody");
   const totalBalanceEl = document.getElementById("total-balance");
 
-  // 1. Fungsi untuk Memuat Data dari Local Storage
   let transactions = JSON.parse(localStorage.getItem("transactions")) || [];
 
-  // 2. Fungsi untuk Render Tampilan
   function renderTransactions() {
-    // Membersihkan tabel
     tableBody.innerHTML = "";
     let totalBalance = 0;
 
     transactions.forEach((tx) => {
-      // Hitung total dan saldo
       const total = tx.amount * tx.price;
       if (tx.type === "sale") {
-        totalBalance += total; // Penjualan menambah saldo
+        totalBalance += total;
       } else {
-        totalBalance -= total; // Pembelian mengurangi saldo
+        // purchase
+        totalBalance -= total;
       }
 
-      // Buat baris tabel baru
       const row = tableBody.insertRow();
+      // Menambahkan kelas Tailwind untuk warna teks
+      const typeClass = tx.type === "sale" ? "text-green-600" : "text-red-600";
+
       row.innerHTML = `
-                <td>${new Date(tx.timestamp).toLocaleString()}</td>
-                <td class="${tx.type}">${
+                <td class="py-3 px-6 whitespace-nowrap">${new Date(
+                  tx.timestamp
+                ).toLocaleString()}</td>
+                <td class="py-3 px-6 whitespace-nowrap font-semibold ${typeClass}">${
         tx.type === "sale" ? "Jual" : "Beli"
       }</td>
-                <td>${tx.item}</td>
-                <td>${tx.amount} Kg</td>
-                <td>IDR ${total.toLocaleString("id-ID")}</td>
+                <td class="py-3 px-6 whitespace-nowrap">${tx.item}</td>
+                <td class="py-3 px-6 whitespace-nowrap">${tx.amount} Kg</td>
+                <td class="py-3 px-6 whitespace-nowrap">IDR ${total.toLocaleString(
+                  "id-ID"
+                )}</td>
             `;
+      // Alternating row background for better readability
+      if (transactions.indexOf(tx) % 2 === 0) {
+        row.classList.add("bg-gray-50");
+      }
     });
 
-    // Update tampilan saldo
     totalBalanceEl.textContent = `IDR ${totalBalance.toLocaleString("id-ID")}`;
+    // Update warna saldo
+    if (totalBalance < 0) {
+      totalBalanceEl.classList.remove("text-blue-600", "text-green-600");
+      totalBalanceEl.classList.add("text-red-600");
+    } else if (totalBalance > 0) {
+      totalBalanceEl.classList.remove("text-blue-600", "text-red-600");
+      totalBalanceEl.classList.add("text-green-600");
+    } else {
+      totalBalanceEl.classList.remove("text-green-600", "text-red-600");
+      totalBalanceEl.classList.add("text-blue-600");
+    }
   }
 
-  // 3. Fungsi untuk Menangani Form Submission
   form.addEventListener("submit", (e) => {
     e.preventDefault();
 
@@ -51,19 +67,11 @@ document.addEventListener("DOMContentLoaded", () => {
       price: parseFloat(document.getElementById("price").value),
     };
 
-    // Tambahkan ke array
     transactions.push(newTransaction);
-
-    // Simpan ke Local Storage (Penyimpanan Data Sementara)
     localStorage.setItem("transactions", JSON.stringify(transactions));
-
-    // Render ulang tampilan
     renderTransactions();
-
-    // Reset form
     form.reset();
   });
 
-  // Jalankan render saat halaman pertama kali dimuat
   renderTransactions();
 });

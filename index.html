@@ -3,58 +3,133 @@
   <head>
     <meta charset="UTF-8" />
     <title>Manajemen Ikan - Keuangan</title>
+    <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="style.css" />
   </head>
-  <body>
-    <header>
-      <h1>🐟 Manajemen Keuangan Jual Beli Ikan</h1>
-    </header>
+  <body class="bg-gray-100 font-sans leading-normal tracking-normal">
+    <div class="container mx-auto p-4 md:p-8">
+      <header class="bg-blue-600 text-white p-6 rounded-lg shadow-lg mb-8">
+        <h1 class="text-3xl font-bold text-center">
+          🐟 Manajemen Keuangan Jual Beli Ikan
+        </h1>
+      </header>
 
-    <section class="input-form">
-      <h2>Input Transaksi Baru</h2>
-      <form id="transaction-form">
-        <label for="type">Jenis:</label>
-        <select id="type" required>
-          <option value="sale">Penjualan</option>
-          <option value="purchase">Pembelian</option>
-        </select>
+      <section class="bg-white p-6 rounded-lg shadow-lg mb-8">
+        <h2 class="text-2xl font-semibold mb-4 text-gray-800">
+          Input Transaksi Baru
+        </h2>
+        <form
+          id="transaction-form"
+          class="grid grid-cols-1 md:grid-cols-2 gap-4"
+        >
+          <div>
+            <label for="type" class="block text-gray-700 text-sm font-bold mb-2"
+              >Jenis Transaksi:</label
+            >
+            <select
+              id="type"
+              class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+              required
+            >
+              <option value="sale">Penjualan</option>
+              <option value="purchase">Pembelian</option>
+            </select>
+          </div>
+          <div>
+            <label for="item" class="block text-gray-700 text-sm font-bold mb-2"
+              >Jenis Ikan:</label
+            >
+            <input
+              type="text"
+              id="item"
+              class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+              placeholder="Contoh: Lele, Nila"
+              required
+            />
+          </div>
+          <div>
+            <label
+              for="amount"
+              class="block text-gray-700 text-sm font-bold mb-2"
+              >Jumlah (Kg):</label
+            >
+            <input
+              type="number"
+              id="amount"
+              class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+              min="0.01"
+              step="0.01"
+              placeholder="Cth: 10.5"
+              required
+            />
+          </div>
+          <div>
+            <label
+              for="price"
+              class="block text-gray-700 text-sm font-bold mb-2"
+              >Harga per Kg (IDR):</label
+            >
+            <input
+              type="number"
+              id="price"
+              class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+              min="1"
+              placeholder="Cth: 25000"
+              required
+            />
+          </div>
+          <div class="md:col-span-2">
+            <button
+              type="submit"
+              class="bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline w-full"
+            >
+              Catat Transaksi
+            </button>
+          </div>
+        </form>
+      </section>
 
-        <label for="item">Jenis Ikan:</label>
-        <input type="text" id="item" required />
+      <section class="bg-white p-6 rounded-lg shadow-lg mb-8">
+        <h2 class="text-2xl font-semibold mb-4 text-gray-800">
+          Ringkasan Keuangan
+        </h2>
+        <div
+          class="flex flex-col md:flex-row justify-around items-center text-lg font-medium"
+        >
+          <p class="mb-2 md:mb-0">
+            Total Saldo:
+            <span id="total-balance" class="text-blue-600 font-bold"
+              >IDR 0</span
+            >
+          </p>
+        </div>
+      </section>
 
-        <label for="amount">Jumlah (Kg):</label>
-        <input type="number" id="amount" min="0.01" step="0.01" required />
-
-        <label for="price">Harga per Kg (IDR):</label>
-        <input type="number" id="price" min="1" required />
-
-        <button type="submit">Catat Transaksi</button>
-      </form>
-    </section>
-
-    <hr />
-
-    <section class="dashboard">
-      <h2>Ringkasan Keuangan</h2>
-      <p>Total Saldo: <span id="total-balance">IDR 0</span></p>
-      <p>Transaksi Hari Ini: <span id="daily-count">0</span></p>
-    </section>
-
-    <section class="history">
-      <h2>Riwayat Transaksi</h2>
-      <table id="history-table">
-        <thead>
-          <tr>
-            <th>Waktu</th>
-            <th>Jenis</th>
-            <th>Ikan</th>
-            <th>Jumlah (Kg)</th>
-            <th>Harga Total</th>
-          </tr>
-        </thead>
-        <tbody></tbody>
-      </table>
-    </section>
+      <section class="bg-white p-6 rounded-lg shadow-lg">
+        <h2 class="text-2xl font-semibold mb-4 text-gray-800">
+          Riwayat Transaksi
+        </h2>
+        <div class="overflow-x-auto">
+          <table
+            id="history-table"
+            class="min-w-full bg-white border border-gray-200"
+          >
+            <thead>
+              <tr
+                class="bg-gray-200 text-gray-600 uppercase text-sm leading-normal"
+              >
+                <th class="py-3 px-6 text-left">Waktu</th>
+                <th class="py-3 px-6 text-left">Jenis</th>
+                <th class="py-3 px-6 text-left">Ikan</th>
+                <th class="py-3 px-6 text-left">Jumlah (Kg)</th>
+                <th class="py-3 px-6 text-left">Harga Total</th>
+              </tr>
+            </thead>
+            <tbody class="text-gray-600 text-sm font-light"></tbody>
+          </table>
+        </div>
+      </section>
+    </div>
 
     <script src="script.js"></script>
   </body>
