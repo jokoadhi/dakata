@@ -14,7 +14,7 @@ document.addEventListener("DOMContentLoaded", () => {
     { id: "molly_sankis", name: "Molly Sankis" },
     { id: "molly_tiger", name: "Molly Tiger" },
     { id: "molly_leopard", name: "Molly Leopard" },
-    { id: "mix", name: "Mix (Tidak Spesifik)" },
+    { id: "mix", name: "Mix (Campur)" },
   ];
 
   // -----------------------------------------------------
