@@ -9,7 +9,7 @@ document.addEventListener("DOMContentLoaded", () => {
     { id: "molly_gold_cawang", name: "Molly Gold (Cawang)" },
     { id: "molly_gold_rontel", name: "Molly Gold (Rontel)" },
     { id: "molly_marble", name: "Molly Marble" },
-    { id: "molly_kaliko", name: "Molly Kaliko" }, // Ditambahkan Kaliko
+    { id: "molly_kaliko", name: "Molly Kaliko" },
     { id: "molly_trico", name: "Molly Trico" },
     { id: "molly_sankis", name: "Molly Sankis" },
     { id: "molly_tiger", name: "Molly Tiger" },
@@ -88,22 +88,23 @@ document.addEventListener("DOMContentLoaded", () => {
 
     // Loop untuk menghitung saldo dan merender tabel
     transactions.forEach((tx, index) => {
-      const total = tx.packagePrice;
+      // HITUNG TOTAL NILAI TRANSAKSI (Harga Paket + Ongkir)
+      const totalTransactionValue = tx.packagePrice + tx.shippingCost;
+
       if (tx.type === "sale") {
-        totalBalance += total; // Penjualan menambah saldo
+        totalBalance += totalTransactionValue; // Penjualan menambah saldo
       } else {
-        totalBalance -= total; // Pembelian mengurangi saldo
+        totalBalance -= totalTransactionValue; // Pembelian mengurangi saldo
       }
 
       // Gabungkan detail ikan menjadi string untuk ditampilkan di tabel
-      // Format: "Jumlah x Nama Ikan; Jumlah x Nama Ikan"
       const fishDetails = tx.packageContent
         .map((item) => {
           const fishName =
             FISH_VARIETIES.find((f) => f.id === item.type)?.name || item.type;
           return `${item.count}x ${fishName}`;
         })
-        .join(", "); // Gabungkan dengan koma dan spasi
+        .join(", ");
 
       const row = tableBody.insertRow();
       const typeClass = tx.type === "sale" ? "text-green-600" : "text-red-600";
@@ -115,12 +116,22 @@ document.addEventListener("DOMContentLoaded", () => {
                 <td class="py-3 px-6 whitespace-nowrap font-semibold ${typeClass}">${
         tx.type === "sale" ? "JUAL" : "BELI"
       }</td>
-                <td class="py-3 px-6 text-sm">${fishDetails}</td>
-                <td class="py-3 px-6 whitespace-nowrap font-bold">IDR ${total.toLocaleString(
-                  "id-ID"
-                )}</td>
+                <td class="py-3 px-6 text-sm">
+                    Isi: ${fishDetails} <br>
+                    <span class="font-semibold">Tujuan:</span> ${
+                      tx.destination
+                    } 
+                </td>
+                <td class="py-3 px-6 whitespace-nowrap font-bold">
+                    Paket: IDR ${tx.packagePrice.toLocaleString("id-ID")} <br>
+                    Ongkir: IDR ${tx.shippingCost.toLocaleString("id-ID")} <br>
+                    <hr class="my-1 border-gray-300">
+                    <span class="${typeClass}">TOTAL: IDR ${totalTransactionValue.toLocaleString(
+        "id-ID"
+      )}</span>
+                </td>
             `;
-      // Memberi warna latar selang-seling (Zebra Stripping)
+      // Memberi warna latar selang-seling
       if (index % 2 === 0) {
         row.classList.add("bg-gray-50");
       }
@@ -153,6 +164,10 @@ document.addEventListener("DOMContentLoaded", () => {
     const packagePrice = parseFloat(
       document.getElementById("package_price").value
     );
+    const shippingCost = parseFloat(
+      document.getElementById("shipping_cost").value
+    );
+    const destination = document.getElementById("destination").value.trim();
 
     // Ambil semua data input ikan yang ada di form
     const fishTypes = Array.from(document.querySelectorAll(".fish-type"));
@@ -165,10 +180,10 @@ document.addEventListener("DOMContentLoaded", () => {
       const type = fishTypes[i].value;
       const count = parseInt(fishCounts[i].value);
 
-      // Hanya masukkan item yang valid
+      // Hanya masukkan item yang valid (terpilih dan jumlah > 0)
       if (type && count > 0 && !isNaN(count)) {
         packageContent.push({
-          type: type, // ID ikan (misal: molly_platinum_cawang)
+          type: type, // ID ikan
           count: count, // Jumlah ikan dalam paket
         });
       }
@@ -182,11 +197,19 @@ document.addEventListener("DOMContentLoaded", () => {
       return;
     }
 
+    // Validasi input harga
+    if (packagePrice <= 0 || isNaN(packagePrice)) {
+      alert("Harga Paket harus diisi dengan nilai yang valid.");
+      return;
+    }
+
     const newTransaction = {
       timestamp: Date.now(),
       type: document.getElementById("type").value,
       packagePrice: packagePrice,
-      packageContent: packageContent, // Menyimpan detail isi paket
+      shippingCost: shippingCost,
+      destination: destination,
+      packageContent: packageContent,
     };
 
     // Simpan data

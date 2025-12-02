@@ -2,7 +2,8 @@
 <html lang="id">
   <head>
     <meta charset="UTF-8" />
-    <title>Manajemen Keuangan - Dakata</title>
+    <title>Manajemen Keuangan DAKATA</title>
+
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
     <script src="https://cdn.tailwindcss.com"></script>
@@ -12,17 +13,17 @@
     <div class="container mx-auto p-4 md:p-8">
       <header class="bg-blue-600 text-white p-6 rounded-lg shadow-lg mb-8">
         <h1 class="text-3xl font-bold text-center">
-          🐟 Manajemen Keuangan DakaTa Aquatic
+          🐟 Manajemen Keuangan DAKATA Aquatic
         </h1>
       </header>
 
       <section class="bg-white p-6 rounded-lg shadow-lg mb-8">
         <h2 class="text-2xl font-semibold mb-4 text-gray-800">
-          Input Transaksi Baru
+          Input Transaksi Baru (Paket)
         </h2>
         <form
           id="transaction-form"
-          class="grid grid-cols-1 md:grid-cols-2 gap-4"
+          class="grid grid-cols-1 md:grid-cols-3 gap-4"
         >
           <div>
             <label for="type" class="block text-gray-700 text-sm font-bold mb-2"
@@ -37,6 +38,7 @@
               <option value="purchase">Pembelian</option>
             </select>
           </div>
+
           <div>
             <label
               for="package_price"
@@ -53,7 +55,38 @@
             />
           </div>
 
-          <div class="md:col-span-2">
+          <div>
+            <label
+              for="destination"
+              class="block text-gray-700 text-sm font-bold mb-2"
+              >Tujuan Pengiriman:</label
+            >
+            <input
+              type="text"
+              id="destination"
+              class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+              placeholder="Cth: Jakarta Pusat"
+              required
+            />
+          </div>
+
+          <div class="md:col-span-3">
+            <label
+              for="shipping_cost"
+              class="block text-gray-700 text-sm font-bold mb-2"
+              >Biaya Ongkir (IDR):</label
+            >
+            <input
+              type="number"
+              id="shipping_cost"
+              class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+              min="0"
+              value="0"
+              required
+            />
+          </div>
+
+          <div class="md:col-span-3">
             <label class="block text-gray-700 text-sm font-bold mb-2"
               >Isi Paket (Jenis & Jumlah Ikan):</label
             >
@@ -72,7 +105,7 @@
             </button>
           </div>
 
-          <div class="md:col-span-2 mt-4">
+          <div class="md:col-span-3 mt-4">
             <button
               type="submit"
               class="bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline w-full"
@@ -114,8 +147,8 @@
               >
                 <th class="py-3 px-6 text-left">Waktu</th>
                 <th class="py-3 px-6 text-left">Jenis</th>
-                <th class="py-3 px-6 text-left">Isi Paket</th>
-                <th class="py-3 px-6 text-left">Harga Total</th>
+                <th class="py-3 px-6 text-left">Detail Paket & Tujuan</th>
+                <th class="py-3 px-6 text-left">Total Nilai Transaksi</th>
               </tr>
             </thead>
             <tbody class="text-gray-600 text-sm font-light"></tbody>
