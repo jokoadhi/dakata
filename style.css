@@ -1,0 +1,70 @@
+/* style.css */
+body {
+  font-family: sans-serif;
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 20px;
+  background-color: #f4f4f9;
+}
+
+header {
+  text-align: center;
+  color: #007bff;
+  margin-bottom: 20px;
+}
+
+section {
+  background-color: white;
+  padding: 20px;
+  margin-bottom: 20px;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+/* Form Styling */
+.input-form label,
+.input-form input,
+.input-form select,
+.input-form button {
+  display: block;
+  margin-bottom: 10px;
+}
+.input-form input,
+.input-form select,
+.input-form button {
+  width: 100%;
+  padding: 10px;
+  box-sizing: border-box;
+}
+.input-form button {
+  background-color: #28a745;
+  color: white;
+  border: none;
+  cursor: pointer;
+}
+
+/* Table Styling */
+#history-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+#history-table th,
+#history-table td {
+  border: 1px solid #ddd;
+  padding: 8px;
+  text-align: left;
+}
+#history-table th {
+  background-color: #007bff;
+  color: white;
+}
+
+/* Warna untuk jenis transaksi */
+.sale {
+  color: green;
+  font-weight: bold;
+}
+.purchase {
+  color: red;
+  font-weight: bold;
+}

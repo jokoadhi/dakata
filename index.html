@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="id">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Manajemen Ikan - Keuangan</title>
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <header>
+      <h1>🐟 Manajemen Keuangan Jual Beli Ikan</h1>
+    </header>
+
+    <section class="input-form">
+      <h2>Input Transaksi Baru</h2>
+      <form id="transaction-form">
+        <label for="type">Jenis:</label>
+        <select id="type" required>
+          <option value="sale">Penjualan</option>
+          <option value="purchase">Pembelian</option>
+        </select>
+
+        <label for="item">Jenis Ikan:</label>
+        <input type="text" id="item" required />
+
+        <label for="amount">Jumlah (Kg):</label>
+        <input type="number" id="amount" min="0.01" step="0.01" required />
+
+        <label for="price">Harga per Kg (IDR):</label>
+        <input type="number" id="price" min="1" required />
+
+        <button type="submit">Catat Transaksi</button>
+      </form>
+    </section>
+
+    <hr />
+
+    <section class="dashboard">
+      <h2>Ringkasan Keuangan</h2>
+      <p>Total Saldo: <span id="total-balance">IDR 0</span></p>
+      <p>Transaksi Hari Ini: <span id="daily-count">0</span></p>
+    </section>
+
+    <section class="history">
+      <h2>Riwayat Transaksi</h2>
+      <table id="history-table">
+        <thead>
+          <tr>
+            <th>Waktu</th>
+            <th>Jenis</th>
+            <th>Ikan</th>
+            <th>Jumlah (Kg)</th>
+            <th>Harga Total</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </section>
+
+    <script src="script.js"></script>
+  </body>
+</html>
