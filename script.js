@@ -206,6 +206,11 @@ document.addEventListener("DOMContentLoaded", () => {
       const shippingCost = tx.shippingCost || 0;
       const totalAmount = packagePrice + shippingCost;
 
+      // --- URL LOGO DARI USER ---
+      const SHOP_NAME = "DAKATA Aquatic";
+      const LOGO_URL = "./logo.png";
+      // -------------------------
+
       let dateToDisplay = new Date().toLocaleDateString("id-ID", {
         day: "2-digit",
         month: "long",
@@ -219,7 +224,6 @@ document.addEventListener("DOMContentLoaded", () => {
         });
       }
 
-      // 1. Buat detail item (Isi Paket) untuk tabel invoice
       let itemDetailsHTML = "";
 
       packageContent.forEach((item, index) => {
@@ -232,81 +236,188 @@ document.addEventListener("DOMContentLoaded", () => {
         }
 
         itemDetailsHTML += `
-                    <tr>
-                        <td>${index + 1}</td>
-                        <td>${itemName}</td>
-                        <td>${item.count}</td>
-                    </tr>
-                `;
+                <tr>
+                    <td>${index + 1}</td>
+                    <td>${itemName}</td>
+                    <td style="text-align: center;">${item.count}</td>
+                </tr>
+            `;
       });
 
-      // 2. Template HTML untuk Invoice (Menghilangkan kolom harga per unit)
+      // 2. Template HTML untuk Invoice (Watermark Disesuaikan)
       const invoiceHTML = `
-                <html>
-                <head>
-                    <title>Nota Transaksi #${id.substring(0, 8)}</title>
-                    <style>
-                        body { font-family: Arial, sans-serif; font-size: 12px; margin: 30px; }
-                        .container { width: 100%; max-width: 600px; margin: 0 auto; border: 1px solid #ccc; padding: 20px; }
-                        h2 { text-align: center; margin-bottom: 20px; }
-                        table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
-                        th, td { border: 1px solid #eee; padding: 8px; text-align: left; }
-                        th { background-color: #f4f4f4; }
-                        .header-info, .total { margin-bottom: 15px; }
-                        .total p { text-align: right; margin: 5px 0; }
-                    </style>
-                </head>
-                <body>
-                    <div class="container">
-                        <h2>NOTA TRANSAKSI ${
-                          tx.type === "sale" ? "PENJUALAN" : "PEMBELIAN"
-                        } <br> DAKATA Aquatic</h2>
-                        <div class="header-info">
-                            <p><strong>Nomor Nota:</strong> #${id.substring(
-                              0,
-                              8
-                            )}</p>
-                            <p><strong>Tanggal:</strong> ${dateToDisplay}</p>
-                            <p><strong>Kepada:</strong> ${clientName}</p>
-                            <p><strong>Tujuan Pengiriman:</strong> ${destination}</p>
-                        </div>
+            <html>
+            <head>
+                <title>Nota Transaksi #${id.substring(0, 8)}</title>
+                <style>
+                    body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; font-size: 12px; margin: 0; padding: 0; background-color: #f0f0f0; }
+                    .invoice-page { 
+                        width: 210mm; 
+                        min-height: 297mm; 
+                        margin: 10mm auto; 
+                        background: white; 
+                        box-shadow: 0 0 5px rgba(0, 0, 0, 0.1);
+                        position: relative;
+                        padding: 20mm;
+                    }
+                    /* Watermark Logo Transparan */
+                    .watermark {
+                        position: absolute;
+                        top: 50%;
+                        left: 50%;
+                        transform: translate(-50%, -50%);
+                        opacity: 0.08; /* Sedikit lebih transparan */
+                        z-index: 0;
+                        pointer-events: none;
+                    }
+                    .watermark img {
+                        width: 600px; /* Diperbesar sedikit */
+                        height: auto;
+                    }
+                    /* Header Style */
+                    .header {
+                        display: flex;
+                        justify-content: space-between;
+                        align-items: center;
+                        border-bottom: 3px solid #007bff; /* Garis Biru */
+                        padding-bottom: 10px;
+                        margin-bottom: 20px;
+                    }
+                    .header h1 {
+                        color: #007bff;
+                        font-size: 20px;
+                        margin: 0;
+                    }
+                    .header-info {
+                        padding: 10px 0;
+                        border-bottom: 1px dashed #ccc;
+                        margin-bottom: 15px;
+                    }
+                    .header-info p {
+                        margin: 3px 0;
+                    }
 
-                        <table>
-                            <thead>
-                                <tr>
-                                    <th style="width: 5%;">No.</th>
-                                    <th>Deskripsi Item (Isi Paket)</th>
-                                    <th style="width: 15%;">Jumlah</th>
-                                    </tr>
-                            </thead>
-                            <tbody>
-                                ${itemDetailsHTML}
-                            </tbody>
-                        </table>
+                    /* Table Style */
+                    table { width: 100%; border-collapse: collapse; margin-bottom: 20px; background-color: #fff; }
+                    th, td { padding: 10px; text-align: left; border: 1px solid #ddd; }
+                    th { 
+                        background-color: #e9f5ff; /* Warna Header Biru Muda */
+                        color: #333; 
+                        border-bottom: 2px solid #007bff;
+                    }
+                    tr:nth-child(even) { background-color: #f9f9f9; } /* Striping */
+                    
+                    /* Total Section */
+                    .total-box {
+                        width: 50%;
+                        float: right;
+                        padding: 10px;
+                        border: 1px solid #007bff;
+                        background-color: #f7faff;
+                    }
+                    .total-box p { 
+                        text-align: right; 
+                        margin: 5px 0; 
+                        font-size: 13px;
+                    }
+                    .total-box .final-total {
+                        font-size: 16px;
+                        font-weight: bold;
+                        color: #dc3545; /* Warna Total Akhir Merah */
+                        border-top: 1px solid #007bff;
+                        padding-top: 5px;
+                        margin-top: 5px;
+                    }
 
-                        <div class="total">
-                            <p><strong>Subtotal (Harga Paket):</strong> IDR ${packagePrice.toLocaleString(
-                              "id-ID"
-                            )}</p>
-                            <p><strong>Biaya Kirim (Ongkir):</strong> IDR ${shippingCost.toLocaleString(
-                              "id-ID"
-                            )}</p>
-                            <hr style="border-top: 1px solid #000; margin: 5px 0;">
-                            <p><strong>TOTAL AKHIR:</strong> IDR ${totalAmount.toLocaleString(
-                              "id-ID"
-                            )}</p>
-                        </div>
+                    /* Footer */
+                    .footer {
+                        clear: both;
+                        text-align: center;
+                        margin-top: 50px;
+                        padding-top: 10px;
+                        border-top: 1px solid #aaa;
+                        font-style: italic;
+                        color: #555;
+                    }
 
-                        <p style="text-align: center; margin-top: 30px;">Terima kasih atas transaksinya.</p>
+                    /* Media Print: Penting untuk memastikan warna dan gambar muncul */
+                    @media print {
+                        body { background: white; }
+                        .invoice-page { box-shadow: none; margin: 0; border: none; max-height: 297mm; overflow: hidden; }
+                        /* Gunakan properti print-color-adjust untuk memastikan warna/background tercetak */
+                        th { background-color: #e9f5ff !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+                        .total-box { background-color: #f7faff !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; border: 1px solid #333; }
+                        
+                        /* Watermark harus diatur ulang agar tidak mengganggu tata letak cetak */
+                        .watermark { opacity: 0.1 !important; } 
+                    }
+                </style>
+            </head>
+            <body>
+                <div class="invoice-page">
+                    
+                    <div class="watermark">
+                        <img src="${LOGO_URL}" alt="${SHOP_NAME} Logo">
                     </div>
-                </body>
-                </html>
-            `;
+                    
+                    <div class="header">
+                        <div>
+                            <h1>NOTA TRANSAKSI PEMBELIAN</h1>
+                            <p style="color: #555;">${SHOP_NAME}</p>
+                        </div>
+                        <img src="${LOGO_URL}" alt="Logo Kecil" style="width: 50px; height: 50px;">
+                    </div>
+
+                    <div class="header-info">
+                        <p><strong>Nomor Nota:</strong> #${id.substring(
+                          0,
+                          8
+                        )}</p>
+                        <p><strong>Tanggal:</strong> ${dateToDisplay}</p>
+                        <p><strong>Kepada:</strong> ${clientName}</p>
+                        <p><strong>Tujuan Pengiriman:</strong> ${destination}</p>
+                    </div>
+
+                    <table>
+                        <thead>
+                            <tr>
+                                <th style="width: 5%;">No.</th>
+                                <th>Deskripsi Item (Isi Paket)</th>
+                                <th style="width: 15%; text-align: center;">Jumlah</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${itemDetailsHTML}
+                        </tbody>
+                    </table>
+
+                    <div class="total-box">
+                        <p>Subtotal (Harga Paket): IDR ${packagePrice.toLocaleString(
+                          "id-ID"
+                        )}</p>
+                        <p>Biaya Kirim (Ongkir): IDR ${shippingCost.toLocaleString(
+                          "id-ID"
+                        )}</p>
+                        <p class="final-total">TOTAL AKHIR: IDR ${totalAmount.toLocaleString(
+                          "id-ID"
+                        )}</p>
+                    </div>
+
+                    <div class="footer">
+                        <p>Terima kasih atas transaksinya. Mohon periksa kembali rincian di atas.</p>
+                        <p>Dibuat pada ${new Date().toLocaleString("id-ID")}</p>
+                    </div>
+                </div>
+            </body>
+            </html>
+        `;
 
       // 3. Buka jendela baru dan cetak
-      const printWindow = window.open("", "", "height=600,width=800");
+      const printWindow = window.open("", "", "height=700,width=800");
       printWindow.document.write(invoiceHTML);
       printWindow.document.close();
+
+      // Memaksa cetak di sini akan memastikan CSS sudah dimuat
       printWindow.print();
     } catch (error) {
       console.error("Error generating invoice: ", error);
