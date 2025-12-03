@@ -177,15 +177,40 @@ if (loginForm) {
   });
 }
 
-// Handler Logout
+/// Handler Logout
 async function handleLogout() {
+  // === START: KONFIRMASI SWEETALERT2 ===
+  const result = await Swal.fire({
+    title: "Konfirmasi Keluar",
+    text: "Apakah Anda yakin ingin keluar dari aplikasi?",
+    icon: "question",
+    showCancelButton: true,
+    confirmButtonColor: "#d33", // Merah
+    cancelButtonColor: "#3085d6", // Biru
+    confirmButtonText: "Ya, Keluar!",
+    cancelButtonText: "Batal",
+  });
+
+  // Jika pengguna memilih BATAL, hentikan proses logout
+  if (!result.isConfirmed) {
+    return;
+  }
+  // === END: KONFIRMASI SWEETALERT2 ===
+
   showLoading();
   try {
     await auth.signOut();
+
+    // Notifikasi toast saat berhasil logout
     Swal.fire({
       title: "Logout Berhasil",
       text: "Anda telah keluar dari aplikasi.",
       icon: "info",
+      toast: true,
+      position: "top-end",
+      showConfirmButton: false,
+      timer: 3000,
+      timerProgressBar: true,
     });
   } catch (error) {
     console.error("Logout Error:", error);
@@ -195,7 +220,8 @@ async function handleLogout() {
       icon: "error",
     });
   } finally {
-    hideLoading();
+    // hideLoading() dipanggil melalui toggleApp(false, null)
+    // setelah auth.signOut() berhasil memicu auth.onAuthStateChanged
   }
 }
 
@@ -216,7 +242,6 @@ auth.onAuthStateChanged((user) => {
     toggleApp(false, null);
   }
 });
-
 // =====================================================
 // DOM INITIALIZATION & EVENT LISTENERS
 // =====================================================
@@ -365,6 +390,33 @@ function initializeDOMElements() {
 
   resetForm();
 }
+
+// =====================================================
+// FUNGSI KHUSUS: TOGGLE PASSWORD VISIBILITY (Login)
+// =====================================================
+
+document.addEventListener("DOMContentLoaded", () => {
+  const passwordInput = document.getElementById("login-password");
+  const toggleButton = document.getElementById("toggle-password");
+
+  if (toggleButton && passwordInput) {
+    toggleButton.addEventListener("click", () => {
+      const type =
+        passwordInput.getAttribute("type") === "password" ? "text" : "password";
+      passwordInput.setAttribute("type", type);
+
+      // Mengganti ikon
+      const icon = toggleButton.querySelector("i");
+      if (type === "text") {
+        icon.classList.remove("fa-eye-slash");
+        icon.classList.add("fa-eye");
+      } else {
+        icon.classList.remove("fa-eye");
+        icon.classList.add("fa-eye-slash");
+      }
+    });
+  }
+});
 
 // =====================================================
 // FUNGSI UTILITY & LOGIKA INPUT DAKATA
