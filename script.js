@@ -64,11 +64,13 @@ function toggleApp(loggedIn) {
     loginContainer.classList.add("hidden");
     appContainer.classList.remove("hidden");
 
-    addFishInput();
+    // Panggil resetForm() di sini untuk memperbaiki masalah input ikan berulang
+    window.resetForm();
   } else {
     appContainer.classList.add("hidden");
     loginContainer.classList.remove("hidden");
-    hideLoading();
+    // Tambahkan hideLoading() jika Anda memiliki fungsi itu
+    // hideLoading();
   }
 }
 

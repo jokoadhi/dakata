@@ -380,23 +380,18 @@
 
           <div
             id="pagination-controls"
-            class="p-4 flex justify-between items-center border-t border-gray-200"
+            class="flex flex-col sm:flex-row sm:justify-between items-center mt-4"
           >
-            <span id="pagination-info" class="text-sm text-gray-600"
-              >0 data</span
-            >
-            <div>
+            <span class="mb-2 sm:mb-0">Menampilkan 1 sampai 5 dari 5 data</span>
+
+            <div class="flex space-x-2">
               <button
-                id="prev-page-btn"
-                class="bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-1 px-3 rounded-l text-sm disabled:opacity-50"
-                disabled
+                class="bg-gray-200 hover:bg-gray-300 text-gray-700 py-2 px-4 rounded"
               >
                 &lt; Sebelumnya
               </button>
               <button
-                id="next-page-btn"
-                class="bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-1 px-3 rounded-r text-sm disabled:opacity-50"
-                disabled
+                class="bg-gray-200 hover:bg-gray-300 text-gray-700 py-2 px-4 rounded"
               >
                 Berikutnya &gt;
               </button>
