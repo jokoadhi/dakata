@@ -1,5 +1,5 @@
 // =========================================================
-// 1. INI ADALAH FILE: script.js (KODE LENGKAP)
+// 1. INI ADALAH FILE: script.js (KODE LENGKAP DENGAN FILTER PRIBADI)
 // =========================================================
 
 // =====================================================
@@ -21,7 +21,7 @@ const loadingOverlay = document.getElementById("loading-overlay");
 // =========================================================
 
 // Email pengguna yang memiliki akses penuh ke fitur Rekening Pribadi
-const ADMIN_EMAIL = "dakata@gmail.com"; // Pastikan email ini sama dengan yang di index.html
+const ADMIN_EMAIL = "dakata@gmail.com";
 
 // PENTING: Koleksi Firebase baru untuk data pribadi
 const personalTransactionsCollection = db.collection("personalTransactions");
@@ -45,7 +45,7 @@ let form,
   formTitle,
   editModeControls;
 
-// VARIABEL BARU UNTUK FILTER, SEARCH, PAGINATION, dan EXPORT
+// VARIABEL BARU UNTUK FILTER, SEARCH, PAGINATION, dan EXPORT DAKATA
 let allTransactions = []; // Menyimpan semua data transaksi DAKATA
 let filteredTransactions = []; // Menyimpan data setelah difilter/search DAKATA
 let currentPage = 1;
@@ -57,9 +57,22 @@ let filterSelect,
   paginationInfo,
   exportCsvBtn;
 
-// Variabel untuk Mode Edit
+// Variabel untuk Mode Edit DAKATA
 let isEditMode = false;
 let currentEditId = null;
+
+// =========================================================
+// VARIABEL BARU UNTUK REKENING PRIBADI (Filter, Search, Pagination)
+// =========================================================
+let allPersonalTransactions = []; // Menyimpan semua data transaksi pribadi
+let filteredPersonalTransactions = []; // Menyimpan data pribadi setelah difilter/search
+let personalCurrentPage = 1;
+const personalRowsPerPage = 10; // Tetapkan jumlah baris per halaman
+let personalFilterSelect,
+  personalSearchInput,
+  personalPrevPageBtn,
+  personalNextPageBtn,
+  personalPaginationInfo;
 
 // ==========================================================
 // FUNGSI PENGATUR LOADING & UTILITY
@@ -262,6 +275,23 @@ function initializeDOMElements() {
   dakattaHomeBtn = document.getElementById("dakattaHomeBtn"); // Tombol Navigasi ke DAKATA
   personalBalanceContainer = document.getElementById("personal-balance"); // Saldo Pribadi Container
 
+  // INISIALISASI DOM FILTER, SEARCH, PAGINATION PRIBADI
+  personalFilterSelect = document.getElementById("personal-transaction-filter");
+  personalSearchInput = document.getElementById("personal-transaction-search");
+
+  const personalPaginationControls = document.getElementById(
+    "personal-pagination-controls"
+  );
+  if (personalPaginationControls) {
+    // Asumsi ada ID unik untuk tombol, atau ambil dari children
+    personalPrevPageBtn = document.getElementById("personal-prev-page-btn");
+    personalNextPageBtn = document.getElementById("personal-next-page-btn");
+    // Asumsi info pagination ada di elemen span/p pertama di dalam controls
+    personalPaginationInfo =
+      personalPaginationControls.querySelector("span") ||
+      personalPaginationControls.querySelector("p");
+  }
+
   // Event Listeners DAKATA
   if (addFishBtn) addFishBtn.addEventListener("click", addFishInput);
   if (form) form.addEventListener("submit", handleFormSubmission);
@@ -305,6 +335,35 @@ function initializeDOMElements() {
     dakattaHomeBtn.addEventListener("click", () => switchView("main"));
   if (personalForm)
     personalForm.addEventListener("submit", handlePersonalSubmit);
+
+  // EVENT LISTENERS FILTER, SEARCH, PAGINATION PRIBADI
+  if (personalFilterSelect)
+    personalFilterSelect.addEventListener("change", () => {
+      personalCurrentPage = 1;
+      applyPersonalFiltersAndPagination();
+    });
+  if (personalSearchInput)
+    personalSearchInput.addEventListener("input", () => {
+      personalCurrentPage = 1;
+      applyPersonalFiltersAndPagination();
+    });
+  if (personalPrevPageBtn)
+    personalPrevPageBtn.addEventListener("click", () => {
+      if (personalCurrentPage > 1) {
+        personalCurrentPage--;
+        applyPersonalFiltersAndPagination();
+      }
+    });
+  if (personalNextPageBtn)
+    personalNextPageBtn.addEventListener("click", () => {
+      const totalPages = Math.ceil(
+        filteredPersonalTransactions.length / personalRowsPerPage
+      );
+      if (personalCurrentPage < totalPages) {
+        personalCurrentPage++;
+        applyPersonalFiltersAndPagination();
+      }
+    });
 
   // Reset form saat inisialisasi
   resetForm();
@@ -831,7 +890,7 @@ async function fetchTransactions() {
 }
 
 // -----------------------------------------------------
-// 2. Fungsi Menerapkan Filter, Search, dan Pagination
+// 2. Fungsi Menerapkan Filter, Search, dan Pagination DAKATA
 // -----------------------------------------------------
 function applyFiltersAndPagination() {
   if (!allTransactions.length) {
@@ -1310,7 +1369,8 @@ function switchView(viewName) {
     if (dakattaHomeBtn) dakattaHomeBtn.classList.remove("hidden");
     if (personalFinanceBtn) personalFinanceBtn.classList.add("hidden");
 
-    fetchAndRenderPersonalTransactions(); // Muat data pribadi
+    // MENGGANTI PANGGILAN FUNGSI
+    fetchPersonalTransactions(); // Muat data pribadi
   } else {
     hideLoading(); // Safety net
   }
@@ -1352,21 +1412,25 @@ async function handlePersonalSubmit(e) {
 
     personalForm.reset();
     Swal.fire("Berhasil", "Transaksi pribadi berhasil dicatat!", "success");
-    fetchAndRenderPersonalTransactions(); // Refresh list
+    // MENGGANTI PANGGILAN FUNGSI
+    fetchPersonalTransactions(); // Refresh list
   } catch (error) {
     console.error("Error mencatat transaksi pribadi:", error);
     Swal.fire("Gagal", "Gagal mencatat transaksi pribadi.", "error");
   } finally {
-    // hideLoading() dipanggil di fetchAndRenderPersonalTransactions
+    // hideLoading() dipanggil di fetchPersonalTransactions -> applyPersonalFiltersAndPagination
   }
 }
 
+// -----------------------------------------------------
+// 1. Fungsi Mengambil Data Transaksi Pribadi (Fetch All)
+// -----------------------------------------------------
 /**
- * Mengambil dan merender data transaksi pribadi dari Firebase
+ * Mengambil SEMUA data transaksi pribadi dari Firebase dan memicu rendering.
  */
-async function fetchAndRenderPersonalTransactions() {
+async function fetchPersonalTransactions() {
   const user = auth.currentUser;
-  if (!user || !personalTransactionsList) return;
+  if (!user) return;
 
   showLoading();
 
@@ -1376,21 +1440,151 @@ async function fetchAndRenderPersonalTransactions() {
       .orderBy("timestamp", "desc")
       .get();
 
-    personalTransactionsList.innerHTML = "";
+    // Simpan semua data transaksi ke variabel global
+    allPersonalTransactions = snapshot.docs.map((doc) => ({
+      id: doc.id,
+      ...doc.data(),
+    }));
 
-    let personalBalance = 0;
-    let listHTML = "";
+    // Terapkan filter dan render tampilan
+    applyPersonalFiltersAndPagination();
+  } catch (error) {
+    console.error("Error fetching personal transactions:", error);
+    if (personalTransactionsList) {
+      personalTransactionsList.innerHTML =
+        '<p class="text-center text-red-500 p-8">Gagal memuat data pribadi. Cek koneksi Anda.</p>';
+    }
+    // Update Saldo Pribadi ke 0
+    if (personalBalanceContainer) {
+      const balanceClass = "text-blue-500";
+      personalBalanceContainer.innerHTML = `
+            <p class="mb-2 md:mb-0 w-full text-center">
+                Total Saldo:
+                <span
+                    class="font-bold text-4xl block mt-2 ${balanceClass}"
+                    >
+                    ${formatRupiah(0)}
+                </span>
+            </p>
+        `;
+    }
+    hideLoading();
+  }
+}
 
-    snapshot.forEach((doc) => {
-      const data = doc.data();
-      const id = doc.id; // Ambil ID dokumen
+// -----------------------------------------------------
+// 2. Fungsi Menerapkan Filter, Search, dan Pagination PRIBADI
+// -----------------------------------------------------
+/**
+ * Menerapkan Filter, Search, dan Pagination pada data transaksi pribadi.
+ */
+function applyPersonalFiltersAndPagination() {
+  if (!allPersonalTransactions.length) {
+    if (personalTransactionsList)
+      personalTransactionsList.innerHTML =
+        '<p class="text-center text-gray-500 p-8">Belum ada transaksi pribadi yang tercatat.</p>';
+    if (personalPaginationInfo) personalPaginationInfo.textContent = "0 data";
+    if (personalPrevPageBtn) personalPrevPageBtn.disabled = true;
+    if (personalNextPageBtn) personalNextPageBtn.disabled = true;
+    // Update Saldo Pribadi ke 0
+    if (personalBalanceContainer) {
+      const balanceClass = "text-blue-500";
+      personalBalanceContainer.innerHTML = `
+                <p class="mb-2 md:mb-0 w-full text-center">
+                    Total Saldo:
+                    <span
+                        class="font-bold text-4xl block mt-2 ${balanceClass}"
+                        >
+                        ${formatRupiah(0)}
+                    </span>
+                </p>
+            `;
+    }
+    hideLoading();
+    return;
+  }
 
-      // Hitung saldo
-      if (data.type === "MASUK") {
-        personalBalance += data.value;
-      } else {
-        personalBalance -= data.value;
+  // 1. FILTERING & SEARCHING
+  // Nilai filter diambil dari select element (ASUMSI nilai: 'all', 'MASUK', 'KELUAR')
+  const filterType = personalFilterSelect ? personalFilterSelect.value : "all";
+  const searchTerm = personalSearchInput
+    ? personalSearchInput.value.toLowerCase().trim()
+    : "";
+
+  filteredPersonalTransactions = allPersonalTransactions.filter((tx) => {
+    // Filter Jenis (MASUK, KELUAR, atau all)
+    if (filterType !== "all" && tx.type !== filterType) {
+      return false;
+    }
+
+    // Search (hanya pada field 'note')
+    if (searchTerm) {
+      const note = (tx.note || "").toLowerCase();
+      if (!note.includes(searchTerm)) {
+        return false;
       }
+    }
+
+    return true;
+  });
+
+  // 2. PERHITUNGAN SALDO (Diambil dari SEMUA transaksi)
+  // Saldo dihitung dari SEMUA transaksi, bukan hanya yang difilter.
+  let personalBalance = 0;
+  allPersonalTransactions.forEach((data) => {
+    if (data.type === "MASUK") {
+      personalBalance += data.value;
+    } else {
+      personalBalance -= data.value;
+    }
+  });
+
+  // Update Saldo Pribadi
+  if (personalBalanceContainer) {
+    const balanceClass =
+      personalBalance >= 0 ? "text-green-500" : "text-red-500";
+
+    personalBalanceContainer.innerHTML = `
+            <p class="mb-2 md:mb-0 w-full text-center">
+                Total Saldo:
+                <span
+                    class="font-bold text-4xl block mt-2 ${balanceClass}"
+                    >
+                    ${formatRupiah(personalBalance)}
+                </span>
+            </p>
+        `;
+  }
+
+  // 3. PAGINATION
+  const totalFiltered = filteredPersonalTransactions.length;
+  const totalPages = Math.ceil(totalFiltered / personalRowsPerPage);
+
+  // Koreksi halaman jika keluar batas
+  if (personalCurrentPage > totalPages && totalPages > 0) {
+    personalCurrentPage = totalPages;
+  }
+  if (personalCurrentPage < 1 && totalPages > 0) {
+    personalCurrentPage = 1;
+  } else if (totalPages === 0) {
+    personalCurrentPage = 1;
+  }
+
+  const start = (personalCurrentPage - 1) * personalRowsPerPage;
+  const end = start + personalRowsPerPage;
+  const transactionsToDisplay = filteredPersonalTransactions.slice(start, end);
+
+  // 4. RENDERING
+  if (personalTransactionsList) personalTransactionsList.innerHTML = "";
+
+  if (transactionsToDisplay.length === 0) {
+    if (personalTransactionsList)
+      personalTransactionsList.innerHTML =
+        '<p class="text-center text-gray-500 p-8">Tidak ada transaksi pribadi yang cocok dengan kriteria pencarian/filter.</p>';
+  } else {
+    let listHTML = "";
+    transactionsToDisplay.forEach((data) => {
+      const id = data.id;
 
       const typeClass =
         data.type === "MASUK" ? "text-green-600" : "text-red-600";
@@ -1439,38 +1633,24 @@ async function fetchAndRenderPersonalTransactions() {
                 </div>
             `;
     });
-
-    // Render List Transaksi
     personalTransactionsList.innerHTML = listHTML;
-
-    // Update Saldo Pribadi
-    if (personalBalanceContainer) {
-      const balanceClass =
-        personalBalance >= 0 ? "text-green-500" : "text-red-500";
-
-      personalBalanceContainer.innerHTML = `
-                <p class="mb-2 md:mb-0 w-full text-center">
-                    Total Saldo:
-                    <span
-                        class="font-bold text-4xl block mt-2 ${balanceClass}"
-                        >
-                        ${formatRupiah(personalBalance)}
-                    </span>
-                </p>
-            `;
-    }
-
-    if (snapshot.empty) {
-      personalTransactionsList.innerHTML =
-        '<p class="text-center text-gray-500 p-8">Belum ada transaksi pribadi yang tercatat.</p>';
-    }
-  } catch (error) {
-    console.error("Error fetching personal transactions:", error);
-    personalTransactionsList.innerHTML =
-      '<p class="text-center text-red-500 p-8">Gagal memuat data pribadi. Cek koneksi Anda. (Perlu Indeks Firestore: userId, timestamp)</p>';
-  } finally {
-    hideLoading();
   }
+
+  // 5. UPDATE KONTROL PAGINATION
+  if (personalPaginationInfo) {
+    const displayStart = totalFiltered > 0 ? start + 1 : 0;
+    const displayEnd = Math.min(end, totalFiltered);
+
+    personalPaginationInfo.innerHTML = `Menampilkan ${displayStart} sampai ${displayEnd} dari ${totalFiltered} data`;
+  }
+
+  if (personalPrevPageBtn)
+    personalPrevPageBtn.disabled = personalCurrentPage === 1;
+  if (personalNextPageBtn)
+    personalNextPageBtn.disabled =
+      personalCurrentPage === totalPages || totalPages === 0;
+
+  hideLoading();
 }
 
 // -----------------------------------------------------
@@ -1499,7 +1679,7 @@ window.deletePersonalTransaction = async function (id) {
       text: "Catatan pribadi berhasil dihapus.",
       icon: "success",
     });
-    fetchAndRenderPersonalTransactions(); // Refresh list
+    fetchPersonalTransactions(); // Refresh list
   } catch (error) {
     console.error("Error removing personal document: ", error);
     Swal.fire({
@@ -1575,7 +1755,7 @@ window.editPersonalTransaction = async function (id) {
         "Transaksi pribadi berhasil diperbarui.",
         "success"
       );
-      fetchAndRenderPersonalTransactions();
+      fetchPersonalTransactions();
     } catch (error) {
       console.error("Error updating personal transaction: ", error);
       Swal.fire("Gagal!", `Gagal memperbarui: ${error.message}`, "error");

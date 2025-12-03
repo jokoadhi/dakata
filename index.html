@@ -181,7 +181,7 @@
                 id="personalFinanceBtn"
                 class="px-4 py-2 rounded text-white bg-indigo-600 hover:bg-indigo-700 dark:bg-indigo-600 dark:hover:bg-indigo-700 transition duration-300 hidden font-bold text-sm"
               >
-                Rekening
+                Pribadi
               </button>
 
               <button
@@ -445,7 +445,7 @@
             <div id="personal-balance" class="mb-2 md:mb-0 w-full text-center">
               <p>
                 Total Saldo:
-                <span class="text-red-600 font-bold text-4xl block mt-2"
+                <span class="text-blue-500 font-bold text-4xl block mt-2"
                   >IDR 0</span
                 >
               </p>
@@ -463,7 +463,7 @@
                 id="dakattaHomeBtn"
                 class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded transition duration-150 text-sm"
               >
-                <i class="fas fa-home mr-1"></i> Ke DAKATA Aquatic
+                <i class="fas fa-home mr-1"></i>DAKATA Aquatic
               </button>
               <button
                 id="logout-btn-personal"
@@ -541,8 +541,76 @@
             Riwayat Transaksi Pribadi
           </h2>
 
+          <div
+            class="flex flex-col md:flex-row space-y-4 md:space-y-0 md:space-x-4 mb-6"
+          >
+            <div class="w-full md:w-1/3">
+              <label
+                for="personal-transaction-filter"
+                class="block text-sm font-medium text-gray-700"
+                >Filter Jenis:</label
+              >
+              <select
+                id="personal-transaction-filter"
+                class="shadow border rounded w-full py-2 px-3 text-gray-700"
+              >
+                <option value="all">Semua Jenis</option>
+                <option value="MASUK">Pemasukan (MASUK)</option>
+                <option value="KELUAR">Pengeluaran (KELUAR)</option>
+              </select>
+            </div>
+
+            <div class="w-full md:w-2/3">
+              <label
+                for="personal-transaction-search"
+                class="block text-sm font-medium text-gray-700"
+                >Cari Catatan:</label
+              >
+              <div class="relative">
+                <input
+                  type="text"
+                  id="personal-transaction-search"
+                  placeholder="Cari berdasarkan catatan transaksi..."
+                  class="shadow border rounded w-full py-2 px-3 text-gray-700 pl-10"
+                />
+                <div class="absolute inset-y-0 left-0 flex items-center pl-3">
+                  <i class="fas fa-search text-gray-400"></i>
+                </div>
+              </div>
+            </div>
+          </div>
+
           <div id="personal-transactions-list" class="space-y-3">
             <p class="text-center text-gray-500 p-8">Memuat data pribadi...</p>
+          </div>
+
+          <div
+            id="personal-pagination-controls"
+            class="flex flex-col sm:flex-row sm:justify-between items-center mt-6 pt-4 border-t border-gray-200"
+          >
+            <span
+              id="personal-pagination-info"
+              class="mb-2 sm:mb-0 text-sm font-medium text-gray-600"
+            >
+              Menampilkan 0 data
+            </span>
+
+            <div class="flex space-x-2">
+              <button
+                id="personal-prev-page-btn"
+                class="bg-gray-200 hover:bg-gray-300 text-gray-700 py-2 px-4 rounded disabled:opacity-50"
+                disabled
+              >
+                &lt; Sebelumnya
+              </button>
+              <button
+                id="personal-next-page-btn"
+                class="bg-gray-200 hover:bg-gray-300 text-gray-700 py-2 px-4 rounded disabled:opacity-50"
+                disabled
+              >
+                Berikutnya &gt;
+              </button>
+            </div>
           </div>
         </section>
       </div>
