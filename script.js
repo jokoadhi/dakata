@@ -1,11 +1,9 @@
 // =========================================================
-// 1. INI ADALAH FILE: script.js (KODE LENGKAP DENGAN FILTER PRIBADI)
+// INI ADALAH FILE: script.js (KODE LENGKAP - GABUNGAN PART 1 & 2)
 // =========================================================
 
 // =====================================================
-// INISIALISASI
-// CATATAN: auth, db, dan transactionsCollection
-//          diinisialisasi di index.html
+// INISIALISASI VARIABEL GLOBAL & KOLEKSI FIREBASE
 // =====================================================
 
 // DOM Elements terkait Auth & Loading
@@ -16,26 +14,20 @@ const logoutBtn = document.getElementById("logout-btn");
 const loginErrorEl = document.getElementById("login-error");
 const loadingOverlay = document.getElementById("loading-overlay");
 
-// =========================================================
-// VARIABEL & KOLEKSI KHUSUS REKENING PRIBADI
-// =========================================================
-
 // Email pengguna yang memiliki akses penuh ke fitur Rekening Pribadi
 const ADMIN_EMAIL = "dakata@gmail.com";
 
-// PENTING: Koleksi Firebase baru untuk data pribadi
+// Koleksi Firebase
+// Asumsi: db dan transactionsCollection sudah diinisialisasi di index.html
 const personalTransactionsCollection = db.collection("personalTransactions");
 
-// DOM Elements terkait Rekening Pribadi
-let personalFinanceBtn,
-  personalContainer,
-  personalForm,
-  personalTransactionsList,
-  dakattaHomeBtn;
-let personalBalanceContainer; // Container Saldo Pribadi (diganti dari personalBalanceEl)
+// =========================================================
+// VARIABEL DAKATA AQUATIC (Bisnis)
+// =========================================================
 
-// Variabel Global DAKATA Aquatic (Diambil dari DOM yang sudah ada)
+// Data Ikan
 let FISH_VARIETIES = [];
+// DOM Elements DAKATA
 let form,
   tableBody,
   totalBalanceEl,
@@ -44,10 +36,9 @@ let form,
   submitBtn,
   formTitle,
   editModeControls;
-
-// VARIABEL BARU UNTUK FILTER, SEARCH, PAGINATION, dan EXPORT DAKATA
-let allTransactions = []; // Menyimpan semua data transaksi DAKATA
-let filteredTransactions = []; // Menyimpan data setelah difilter/search DAKATA
+// Variabel Filter, Search, Pagination DAKATA
+let allTransactions = [];
+let filteredTransactions = [];
 let currentPage = 1;
 const rowsPerPage = 10;
 let filterSelect,
@@ -56,18 +47,26 @@ let filterSelect,
   nextPageBtn,
   paginationInfo,
   exportCsvBtn;
-
-// Variabel untuk Mode Edit DAKATA
+// Variabel Edit Mode
 let isEditMode = false;
 let currentEditId = null;
 
 // =========================================================
-// VARIABEL BARU UNTUK REKENING PRIBADI (Filter, Search, Pagination)
+// VARIABEL REKENING PRIBADI
 // =========================================================
-let allPersonalTransactions = []; // Menyimpan semua data transaksi pribadi
-let filteredPersonalTransactions = []; // Menyimpan data pribadi setelah difilter/search
+
+// DOM Elements Pribadi
+let personalFinanceBtn,
+  personalContainer,
+  personalForm,
+  personalTransactionsList,
+  dakattaHomeBtn;
+let personalBalanceContainer;
+// Variabel Filter, Search, Pagination Pribadi
+let allPersonalTransactions = [];
+let filteredPersonalTransactions = [];
 let personalCurrentPage = 1;
-const personalRowsPerPage = 10; // Tetapkan jumlah baris per halaman
+const personalRowsPerPage = 10;
 let personalFilterSelect,
   personalSearchInput,
   personalPrevPageBtn,
@@ -77,6 +76,7 @@ let personalFilterSelect,
 // ==========================================================
 // FUNGSI PENGATUR LOADING & UTILITY
 // ==========================================================
+
 function showLoading() {
   if (loadingOverlay) loadingOverlay.classList.remove("hidden");
 }
@@ -96,6 +96,28 @@ function formatRupiah(amount) {
   return sign + "IDR " + new Intl.NumberFormat("id-ID").format(absAmount);
 }
 
+/**
+ * Menampilkan notifikasi "Selamat Datang" di kanan atas.
+ * @param {string} displayName - Nama pengguna.
+ */
+function showWelcomeNotification(displayName) {
+  const name = displayName || "Pengguna";
+
+  Swal.fire({
+    toast: true,
+    position: "top-end",
+    icon: "success",
+    title: `Selamat Datang, ${name}!`,
+    showConfirmButton: false,
+    timer: 3000,
+    timerProgressBar: true,
+    didOpen: (toast) => {
+      toast.addEventListener("mouseenter", Swal.stopTimer);
+      toast.addEventListener("mouseleave", Swal.resumeTimer);
+    },
+  });
+}
+
 // -----------------------------------------------------
 // FUNGSI AUTH DAN TOGGLE APLIKASI
 // -----------------------------------------------------
@@ -106,7 +128,6 @@ function formatRupiah(amount) {
  * @param {firebase.User | null} user - Objek user dari Firebase
  */
 function toggleApp(loggedIn, user) {
-  // Pastikan appContainer sudah diinisialisasi, jika belum panggil initializeDOMElements
   if (loggedIn && !form) {
     initializeDOMElements();
   }
@@ -115,11 +136,18 @@ function toggleApp(loggedIn, user) {
     loginContainer.classList.add("hidden");
 
     // Tentukan visibilitas tombol Rekening Pribadi
-    if (user && user.email === ADMIN_EMAIL) {
-      if (personalFinanceBtn) personalFinanceBtn.classList.remove("hidden");
-    } else {
-      if (personalFinanceBtn) personalFinanceBtn.classList.add("hidden");
+    const isOwner = user && user.email === ADMIN_EMAIL;
+    if (personalFinanceBtn) {
+      if (isOwner) {
+        personalFinanceBtn.classList.remove("hidden");
+      } else {
+        personalFinanceBtn.classList.add("hidden");
+      }
     }
+
+    // PANGGIL NOTIFIKASI SELAMAT DATANG
+    const userName = user.displayName || user.email;
+    showWelcomeNotification(userName);
 
     // Panggil view default setelah login (DAKATA Main)
     switchView("main");
@@ -169,18 +197,7 @@ if (loginForm) {
   });
 }
 
-// Event Listener untuk Logout
-if (logoutBtn) {
-  logoutBtn.addEventListener("click", async () => {
-    // Sinkronisasi tombol logout di halaman pribadi (jika ada)
-    const personalLogoutBtn = document.getElementById("logout-btn-personal");
-    if (personalLogoutBtn)
-      personalLogoutBtn.removeEventListener("click", handleLogout);
-
-    handleLogout();
-  });
-}
-
+// Handler Logout
 async function handleLogout() {
   showLoading();
   try {
@@ -202,18 +219,21 @@ async function handleLogout() {
   }
 }
 
-// PEMERIKSAAN STATUS OTENTIKASI (Paling Penting)
+// Event Listener untuk Logout (Tombol utama DAKATA)
+if (logoutBtn) {
+  logoutBtn.addEventListener("click", handleLogout);
+}
+
+// PEMERIKSAAN STATUS OTENTIKASI
 auth.onAuthStateChanged((user) => {
   showLoading();
   if (user) {
-    // Teruskan objek 'user' ke toggleApp
     toggleApp(true, user);
     // Sinkronisasi tombol logout di halaman pribadi
     const personalLogoutBtn = document.getElementById("logout-btn-personal");
     if (personalLogoutBtn)
       personalLogoutBtn.addEventListener("click", handleLogout);
   } else {
-    // Panggil toggleApp saat logout, user bernilai null
     toggleApp(false, null);
   }
 });
@@ -248,32 +268,31 @@ function initializeDOMElements() {
   formTitle = document.getElementById("form-title");
   editModeControls = document.getElementById("edit-mode-controls");
 
-  // INISIALISASI DOM BARU DAKATA (Filter, Search, Pagination)
+  // INISIALISASI DOM BARU DAKATA (Filter, Search, Pagination, Export)
   filterSelect = document.getElementById("transaction-filter");
   searchInput = document.getElementById("transaction-search");
+  exportCsvBtn = document.getElementById("export-csv-btn");
 
-  // Ambil elemen pagination dari HTML
   const paginationControls = document.getElementById("pagination-controls");
   if (paginationControls) {
+    // Ambil elemen dari children
     const buttons = paginationControls.querySelectorAll("button");
     if (buttons.length >= 2) {
       prevPageBtn = buttons[0];
       nextPageBtn = buttons[1];
     }
-    paginationInfo = paginationControls.querySelector("span"); // Asumsi span pertama adalah info
+    paginationInfo = paginationControls.querySelector("span");
   }
 
-  exportCsvBtn = document.getElementById("export-csv-btn");
-
   // INISIALISASI DOM BARU REKENING PRIBADI
-  personalFinanceBtn = document.getElementById("personalFinanceBtn"); // Tombol Navigasi ke Finance
-  personalContainer = document.getElementById("personal-container"); // Container Halaman Finance
-  personalForm = document.getElementById("personal-transaction-form"); // Form Finance
+  personalFinanceBtn = document.getElementById("personalFinanceBtn");
+  personalContainer = document.getElementById("personal-container");
+  personalForm = document.getElementById("personal-transaction-form");
   personalTransactionsList = document.getElementById(
     "personal-transactions-list"
-  ); // List Transaksi Finance
-  dakattaHomeBtn = document.getElementById("dakattaHomeBtn"); // Tombol Navigasi ke DAKATA
-  personalBalanceContainer = document.getElementById("personal-balance"); // Saldo Pribadi Container
+  );
+  dakattaHomeBtn = document.getElementById("dakattaHomeBtn");
+  personalBalanceContainer = document.getElementById("personal-balance");
 
   // INISIALISASI DOM FILTER, SEARCH, PAGINATION PRIBADI
   personalFilterSelect = document.getElementById("personal-transaction-filter");
@@ -283,13 +302,9 @@ function initializeDOMElements() {
     "personal-pagination-controls"
   );
   if (personalPaginationControls) {
-    // Asumsi ada ID unik untuk tombol, atau ambil dari children
     personalPrevPageBtn = document.getElementById("personal-prev-page-btn");
     personalNextPageBtn = document.getElementById("personal-next-page-btn");
-    // Asumsi info pagination ada di elemen span/p pertama di dalam controls
-    personalPaginationInfo =
-      personalPaginationControls.querySelector("span") ||
-      personalPaginationControls.querySelector("p");
+    personalPaginationInfo = personalPaginationControls.querySelector("span");
   }
 
   // Event Listeners DAKATA
@@ -300,7 +315,7 @@ function initializeDOMElements() {
     packageContainer.addEventListener("click", handlePackageClick);
   }
 
-  // EVENT LISTENERS BARU UNTUK FILTER, SEARCH, PAGINATION, DAN EXPORT DAKATA
+  // EVENT LISTENERS FILTER, SEARCH, PAGINATION, DAN EXPORT DAKATA
   if (filterSelect)
     filterSelect.addEventListener("change", () => {
       currentPage = 1;
@@ -328,7 +343,7 @@ function initializeDOMElements() {
     });
   if (exportCsvBtn) exportCsvBtn.addEventListener("click", exportToCsv);
 
-  // EVENT LISTENERS BARU UNTUK REKENING PRIBADI
+  // EVENT LISTENERS REKENING PRIBADI
   if (personalFinanceBtn)
     personalFinanceBtn.addEventListener("click", () => switchView("personal"));
   if (dakattaHomeBtn)
@@ -365,13 +380,12 @@ function initializeDOMElements() {
       }
     });
 
-  // Reset form saat inisialisasi
   resetForm();
 }
 
-// -----------------------------------------------------
-// FUNGSI UTILITY (FISH INPUT, ETC.)
-// -----------------------------------------------------
+// =====================================================
+// FUNGSI UTILITY & LOGIKA INPUT DAKATA
+// =====================================================
 
 function getFishOptionsHTML(selectedValue = "") {
   let options = '<option value="" disabled>Pilih Jenis Ikan</option>';
@@ -379,7 +393,6 @@ function getFishOptionsHTML(selectedValue = "") {
     const selected = fish.id === selectedValue ? "selected" : "";
     options += `<option value="${fish.id}" ${selected}>${fish.name}</option>`;
   });
-  // OPSI LAINNYA
   const otherSelected = selectedValue === "other" ? "selected" : "";
   options += `<option value="other" ${otherSelected}>Lainnya (Input Teks)</option>`;
   return options;
@@ -454,10 +467,6 @@ function addFishInput(initialType = "") {
   packageContainer.insertAdjacentHTML("beforeend", fishInputHTML);
 }
 
-// -----------------------------------------------------
-// LOGIKA PENANGANAN INPUT & TOMBOL (DAKATA)
-// -----------------------------------------------------
-
 function handlePackageChange(e) {
   if (e.target.classList.contains("fish-type")) {
     const selectEl = e.target;
@@ -490,721 +499,11 @@ function handlePackageClick(e) {
   }
 }
 
-// -----------------------------------------------------
-// LOGIKA CRUD: DELETE (DAKATA)
-// -----------------------------------------------------
-window.deleteTransaction = async function (id) {
-  const result = await Swal.fire({
-    title: "Konfirmasi Hapus",
-    text: "Apakah Anda yakin ingin menghapus transaksi ini secara permanen?",
-    icon: "warning",
-    showCancelButton: true,
-    confirmButtonColor: "#d33",
-    cancelButtonColor: "#3085d6",
-    confirmButtonText: "Ya, Hapus!",
-    cancelButtonText: "Batal",
-  });
-
-  if (!result.isConfirmed) return;
-
-  showLoading();
-
-  try {
-    await transactionsCollection.doc(id).delete();
-    Swal.fire({
-      title: "Dihapus!",
-      text: "Transaksi berhasil dihapus.",
-      icon: "success",
-    });
-    fetchTransactions();
-  } catch (error) {
-    console.error("Error removing document: ", error);
-    Swal.fire({
-      title: "Gagal!",
-      text: "Gagal menghapus transaksi.",
-      icon: "error",
-    });
-    hideLoading();
-  }
-};
-
-// -----------------------------------------------------
-// LOGIKA PEMBUATAN NOTA/INVOICE (DAKATA)
-// -----------------------------------------------------
-window.generateInvoice = async function (id) {
-  showLoading();
-  try {
-    const doc = await transactionsCollection.doc(id).get();
-    if (!doc.exists) {
-      Swal.fire({
-        title: "Error",
-        text: "Transaksi tidak ditemukan.",
-        icon: "error",
-      });
-      return;
-    }
-
-    const tx = doc.data();
-    const packageContent = tx.packageContent || [];
-
-    const destination = tx.destination || "-";
-    const clientName = tx.clientName || "-";
-    const packagePrice = tx.packagePrice || 0;
-    const shippingCost = tx.shippingCost || 0;
-    const totalAmount = packagePrice + shippingCost;
-
-    const SHOP_NAME = "DAKATA Aquatic";
-    const LOGO_PATH = "logo.png";
-
-    let dateToDisplay = new Date().toLocaleDateString("id-ID", {
-      day: "2-digit",
-      month: "long",
-      year: "numeric",
-    });
-    if (tx.timestamp && typeof tx.timestamp.toDate === "function") {
-      dateToDisplay = tx.timestamp.toDate().toLocaleDateString("id-ID", {
-        day: "2-digit",
-        month: "long",
-        year: "numeric",
-      });
-    }
-
-    let itemDetailsHTML = "";
-
-    packageContent.forEach((item, index) => {
-      let itemName = item.type;
-      if (itemName.startsWith("other:")) {
-        itemName = item.type.substring(6);
-      } else {
-        itemName =
-          FISH_VARIETIES.find((f) => f.id === item.type)?.name || item.type;
-      }
-
-      itemDetailsHTML += `
-                <tr>
-                    <td>${index + 1}</td>
-                    <td>${itemName}</td>
-                    <td style="text-align: center;">${item.count}</td>
-                </tr>
-            `;
-    });
-
-    // 2. Template HTML untuk Invoice (Sisanya sama persis dari kode yang Anda berikan)
-    const invoiceHTML = `
-            <html>
-            <head>
-                <title>Nota Transaksi #${id.substring(0, 8)}</title>
-                <style>
-                    body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; font-size: 12px; margin: 0; padding: 0; background-color: #f0f0f0; }
-                    .invoice-page { 
-                        width: 210mm; 
-                        min-height: 297mm; 
-                        margin: 10mm auto; 
-                        background: white; 
-                        box-shadow: 0 0 5px rgba(0, 0, 0, 0.1);
-                        position: relative;
-                        padding: 20mm;
-                    }
-                    /* Watermark Logo Transparan */
-                    .watermark {
-                        position: absolute;
-                        top: 50%;
-                        left: 50%;
-                        transform: translate(-50%, -50%);
-                        opacity: 0.08; 
-                        z-index: 0;
-                        pointer-events: none;
-                    }
-                    .watermark img {
-                        width: 600px; 
-                        height: auto;
-                    }
-                    /* Header Style */
-                    .header {
-                        display: flex;
-                        justify-content: space-between;
-                        align-items: center;
-                        border-bottom: 3px solid #007bff; 
-                        padding-bottom: 10px;
-                        margin-bottom: 20px;
-                    }
-                    .header h1 {
-                        color: #007bff;
-                        font-size: 20px;
-                        margin: 0;
-                    }
-                    /* Logo Kecil di Header */
-                    .header img {
-                        width: 70px; 
-                        height: 70px;
-                    }
-                    .header-info {
-                        padding: 10px 0;
-                        border-bottom: 1px dashed #ccc;
-                        margin-bottom: 15px;
-                    }
-                    .header-info p {
-                        margin: 3px 0;
-                    }
-
-                    /* Table Style */
-                    table { width: 100%; border-collapse: collapse; margin-bottom: 20px; background-color: #fff; }
-                    th, td { padding: 10px; text-align: left; border: 1px solid #ddd; }
-                    th { 
-                        background-color: #e9f5ff; 
-                        color: #333; 
-                        border-bottom: 2px solid #007bff;
-                    }
-                    tr:nth-child(even) { background-color: #f9f9f9; } 
-                    
-                    /* Total Section */
-                    .total-box {
-                        width: 50%;
-                        float: right;
-                        padding: 10px;
-                        border: 1px solid #007bff;
-                        background-color: #f7faff;
-                    }
-                    .total-box p { 
-                        text-align: right; 
-                        margin: 5px 0; 
-                        font-size: 13px;
-                    }
-                    .total-box .final-total {
-                        font-size: 16px;
-                        font-weight: bold;
-                        color: #dc3545; 
-                        border-top: 1px solid #007bff;
-                        padding-top: 5px;
-                        margin-top: 5px;
-                    }
-
-                    /* Footer */
-                    .footer {
-                        clear: both;
-                        text-align: center;
-                        margin-top: 50px;
-                        padding-top: 10px;
-                        border-top: 1px solid #aaa;
-                        font-style: italic;
-                        color: #555;
-                    }
-
-                    /* Media Print */
-                    @media print {
-                        body { background: white; }
-                        .invoice-page { box-shadow: none; margin: 0; border: none; }
-                        
-                        th { background-color: #e9f5ff !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-                        .total-box { background-color: #f7faff !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; border: 1px solid #333; }
-                        
-                        .watermark { opacity: 0.1 !important; } 
-                    }
-                </style>
-            </head>
-            <body>
-                <div class="invoice-page">
-                    
-                    <div class="watermark">
-                        <img src="${LOGO_PATH}" alt="${SHOP_NAME} Logo">
-                    </div>
-                    
-                    <div class="header">
-                        <div>
-                            <h1>NOTA TRANSAKSI PEMBELIAN</h1>
-                            <p style="color: #555;">${SHOP_NAME}</p>
-                        </div>
-                        <img src="${LOGO_PATH}" alt="Logo Kecil" style="width: 70px; height: 70px;">
-                    </div>
-
-                    <div class="header-info">
-                        <p><strong>Nomor Nota:</strong> #${id.substring(
-                          0,
-                          8
-                        )}</p>
-                        <p><strong>Tanggal:</strong> ${dateToDisplay}</p>
-                        <p><strong>Kepada:</strong> ${clientName}</p>
-                        <p><strong>Tujuan Pengiriman:</strong> ${destination}</p>
-                    </div>
-
-                    <table>
-                        <thead>
-                            <tr>
-                                <th style="width: 5%;">No.</th>
-                                <th>Deskripsi Item (Isi Paket)</th>
-                                <th style="width: 15%; text-align: center;">Jumlah</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            ${itemDetailsHTML}
-                        </tbody>
-                    </table>
-
-                    <div class="total-box">
-                        <p>Subtotal (Harga Paket): IDR ${packagePrice.toLocaleString(
-                          "id-ID"
-                        )}</p>
-                        <p>Biaya Kirim (Ongkir): IDR ${shippingCost.toLocaleString(
-                          "id-ID"
-                        )}</p>
-                        <p class="final-total">TOTAL AKHIR: IDR ${totalAmount.toLocaleString(
-                          "id-ID"
-                        )}</p>
-                    </div>
-
-                    <div class="footer">
-                        <p>Terima kasih atas transaksinya. Mohon periksa kembali rincian di atas.</p>
-                        <p>Dibuat pada ${new Date().toLocaleString("id-ID")}</p>
-                    </div>
-                </div>
-            </body>
-            </html>
-        `;
-
-    // 3. Buka jendela baru dan cetak
-    const printWindow = window.open("", "", "height=700,width=800");
-    printWindow.document.write(invoiceHTML);
-    printWindow.document.close();
-
-    printWindow.print();
-  } catch (error) {
-    console.error("Error generating invoice: ", error);
-    Swal.fire({
-      title: "Error",
-      text: "Gagal membuat nota. Periksa data transaksi atau koneksi Anda.",
-      icon: "error",
-    });
-  } finally {
-    hideLoading();
-  }
-};
-
-// -----------------------------------------------------
-// LOGIKA CRUD: EDIT / SETUP EDIT MODE (DAKATA)
-// -----------------------------------------------------
-window.editTransaction = async function (id) {
-  if (!auth.currentUser) return;
-
-  showLoading();
-
-  try {
-    const doc = await transactionsCollection.doc(id).get();
-    if (!doc.exists) {
-      Swal.fire({
-        title: "Error",
-        text: "Transaksi tidak ditemukan.",
-        icon: "error",
-      });
-      return;
-    }
-    const tx = doc.data();
-
-    isEditMode = true;
-    currentEditId = id;
-    if (submitBtn) {
-      submitBtn.textContent = "Simpan Perubahan Transaksi";
-      submitBtn.classList.remove("bg-green-500", "hover:bg-green-700");
-      submitBtn.classList.add("bg-blue-500", "hover:bg-blue-700");
-    }
-    if (formTitle)
-      formTitle.textContent = `Edit Transaksi (ID: ${id.substring(0, 5)}...)`;
-    if (editModeControls) editModeControls.classList.remove("hidden");
-
-    document.getElementById("type").value = tx.type;
-    document.getElementById("package_price").value = tx.packagePrice || 0;
-    document.getElementById("shipping_cost").value = tx.shippingCost || 0;
-    document.getElementById("destination").value = tx.destination || "";
-    document.getElementById("client_name").value = tx.clientName || "";
-
-    renderFishInputs(tx.packageContent);
-
-    window.scrollTo({ top: 0, behavior: "smooth" });
-  } catch (error) {
-    console.error("Error fetching document for edit: ", error);
-    Swal.fire({
-      title: "Error",
-      text: "Gagal memuat data transaksi untuk diedit.",
-      icon: "error",
-    });
-  } finally {
-    hideLoading();
-  }
-};
-
-// -----------------------------------------------------
-// LOGIKA RESET FORM (DAKATA)
-// -----------------------------------------------------
-window.resetForm = function () {
-  isEditMode = false;
-  currentEditId = null;
-  if (form) form.reset();
-
-  if (submitBtn) {
-    submitBtn.textContent = "Catat Transaksi";
-    submitBtn.classList.remove("bg-blue-500", "hover:bg-blue-700");
-    submitBtn.classList.add("bg-green-500", "hover:bg-green-700");
-  }
-  if (formTitle) formTitle.textContent = "Input Transaksi Baru";
-  if (editModeControls) editModeControls.classList.add("hidden");
-
-  deleteFishInputs();
-  addFishInput();
-};
-
 // =====================================================
-// FUNGSI FETCH, FILTER, PAGINATION, DAN SALDO (DAKATA)
+// LOGIKA CRUD DAKATA
 // =====================================================
 
-// -----------------------------------------------------
-// 1. Fungsi Mengambil Data Transaksi dari Firebase (Fetch)
-// -----------------------------------------------------
-async function fetchTransactions() {
-  if (!auth.currentUser) return;
-  showLoading();
-
-  try {
-    const snapshot = await transactionsCollection
-      .orderBy("timestamp", "desc")
-      .get();
-
-    // Simpan semua data transaksi ke variabel global
-    allTransactions = snapshot.docs.map((doc) => ({
-      id: doc.id,
-      ...doc.data(),
-    }));
-
-    // Terapkan filter dan render tampilan
-    applyFiltersAndPagination();
-  } catch (error) {
-    console.error("Error fetching transactions: ", error);
-    if (auth.currentUser) {
-      Swal.fire({
-        title: "Koneksi Error",
-        text: "Gagal memuat data dari database. Cek koneksi dan aturan Firebase (Rules).",
-        icon: "error",
-      });
-    }
-  } finally {
-    // hideLoading() dipindahkan ke applyFiltersAndPagination untuk memastikan loading hilang setelah rendering
-  }
-}
-
-// -----------------------------------------------------
-// 2. Fungsi Menerapkan Filter, Search, dan Pagination DAKATA
-// -----------------------------------------------------
-function applyFiltersAndPagination() {
-  if (!allTransactions.length) {
-    if (tableBody)
-      tableBody.innerHTML =
-        '<tr><td colspan="5" class="py-6 text-center text-gray-500">Belum ada data transaksi.</td></tr>';
-    if (paginationInfo) paginationInfo.textContent = "0 data";
-    if (prevPageBtn) prevPageBtn.disabled = true;
-    if (nextPageBtn) nextPageBtn.disabled = true;
-    if (totalBalanceEl) totalBalanceEl.textContent = formatRupiah(0); // Reset saldo
-    hideLoading();
-    return;
-  }
-
-  // 1. FILTERING & SEARCHING
-  const filterType = filterSelect ? filterSelect.value : "all";
-  const searchTerm = searchInput ? searchInput.value.toLowerCase().trim() : "";
-
-  filteredTransactions = allTransactions.filter((tx) => {
-    // Filter Jenis (sale, purchase, atau all)
-    if (filterType !== "all" && tx.type !== filterType) {
-      return false;
-    }
-
-    // Search
-    if (searchTerm) {
-      const clientName = (tx.clientName || "").toLowerCase();
-      const destination = (tx.destination || "").toLowerCase();
-
-      // Buat teks isi paket untuk pencarian
-      const fishDetailsText = (tx.packageContent || [])
-        .map((item) => {
-          let itemName = item.type;
-          if (itemName.startsWith("other:")) {
-            itemName = item.type.substring(6);
-          } else {
-            itemName =
-              FISH_VARIETIES.find((f) => f.id === item.type)?.name || item.type;
-          }
-          return itemName;
-        })
-        .join(" ")
-        .toLowerCase();
-
-      // Cek apakah search term ada di Nama, Tujuan, atau Isi Paket
-      if (
-        !clientName.includes(searchTerm) &&
-        !destination.includes(searchTerm) &&
-        !fishDetailsText.includes(searchTerm)
-      ) {
-        return false;
-      }
-    }
-
-    return true;
-  });
-
-  // 2. PERHITUNGAN SALDO (Diambil dari SEMUA transaksi)
-  let totalBalance = 0;
-  allTransactions.forEach((tx) => {
-    const packagePrice = tx.packagePrice || 0;
-    // Asumsi: packagePrice adalah nilai yang mempengaruhi saldo (Masuk saat Sale, Keluar saat Purchase)
-    if (tx.type === "sale") {
-      totalBalance += packagePrice;
-    } else {
-      totalBalance -= packagePrice;
-    }
-    // Biaya kirim (shippingCost) biasanya diabaikan dalam perhitungan saldo inti jika dianggap biaya operasional
-  });
-
-  if (totalBalanceEl) {
-    totalBalanceEl.textContent = formatRupiah(totalBalance);
-    totalBalanceEl.classList.remove(
-      "text-blue-600",
-      "text-green-600",
-      "text-red-600"
-    );
-    if (totalBalance < 0) {
-      totalBalanceEl.classList.add("text-red-600");
-    } else if (totalBalance > 0) {
-      totalBalanceEl.classList.add("text-green-600");
-    } else {
-      totalBalanceEl.classList.add("text-blue-600");
-    }
-  }
-
-  // 3. PAGINATION
-  const totalPages = Math.ceil(filteredTransactions.length / rowsPerPage);
-
-  // Koreksi halaman jika keluar batas
-  if (currentPage > totalPages && totalPages > 0) {
-    currentPage = totalPages;
-  }
-  if (currentPage < 1 && totalPages > 0) {
-    currentPage = 1;
-  } else if (totalPages === 0) {
-    currentPage = 1;
-  }
-
-  const start = (currentPage - 1) * rowsPerPage;
-  const end = start + rowsPerPage;
-  const transactionsToDisplay = filteredTransactions.slice(start, end);
-
-  // 4. RENDERING
-  if (tableBody) tableBody.innerHTML = "";
-
-  if (transactionsToDisplay.length === 0) {
-    if (tableBody)
-      tableBody.innerHTML =
-        '<tr><td colspan="5" class="py-6 text-center text-gray-500">Tidak ada transaksi yang cocok dengan kriteria pencarian/filter.</td></tr>';
-  } else {
-    transactionsToDisplay.forEach((tx, index) => {
-      const packagePrice = tx.packagePrice || 0;
-      const shippingCost = tx.shippingCost || 0;
-      // Perhitungan Total Nilai Transaksi (Harga Paket + Ongkir)
-      const totalTransactionValue = packagePrice + shippingCost;
-      const packageContent = tx.packageContent || [];
-
-      const fishDetails = packageContent
-        .map((item) => {
-          let itemName = item.type;
-          if (itemName.startsWith("other:")) {
-            itemName = item.type.substring(6);
-          } else {
-            itemName =
-              FISH_VARIETIES.find((f) => f.id === item.type)?.name || item.type;
-          }
-          return `${item.count}x ${itemName}`;
-        })
-        .join(", ");
-
-      let dateToDisplay = "N/A";
-      if (tx.timestamp && typeof tx.timestamp.toDate === "function") {
-        dateToDisplay = new Date(tx.timestamp.toDate()).toLocaleString("id-ID");
-      } else if (tx.timestamp) {
-        dateToDisplay = new Date(tx.timestamp).toLocaleString("id-ID");
-      }
-
-      const row = tableBody.insertRow();
-      const typeClass = tx.type === "sale" ? "text-green-600" : "text-red-600";
-
-      row.innerHTML = `
-                <td class="py-3 px-6 whitespace-nowrap">${dateToDisplay}</td>
-                <td class="py-3 px-6 whitespace-nowrap font-semibold ${typeClass}">${
-        tx.type === "sale" ? "JUAL" : "BELI"
-      }</td>
-                <td class="py-3 px-6 text-sm min-w-[250px]">
-                    <span class="font-semibold">Nama:</span> ${
-                      tx.clientName || "-"
-                    } <br> 
-                    <span class="font-semibold">Isi:</span> ${
-                      fishDetails || "-"
-                    } <br>
-                    <span class="font-semibold">Tujuan:</span> ${
-                      tx.destination || "-"
-                    } 
-                </td>
-                <td class="py-3 px-6 whitespace-nowrap font-bold">
-                    Paket: ${formatRupiah(packagePrice)} <br>
-                    Ongkir: ${formatRupiah(shippingCost)} <br>
-                    <hr class="my-1 border-gray-300">
-                    <span class="${typeClass}">TOTAL: ${formatRupiah(
-        totalTransactionValue
-      )}</span>
-                </td>
-                <td class="py-3 px-6 text-center whitespace-nowrap">
-                    <button onclick="editTransaction('${
-                      tx.id
-                    }')" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-1 px-3 rounded text-sm focus:outline-none focus:shadow-outline mr-2">
-                        Edit
-                    </button>
-                    <button onclick="generateInvoice('${
-                      tx.id
-                    }')" class="bg-yellow-500 hover:bg-yellow-700 text-white font-bold py-1 px-3 rounded text-sm focus:outline-none focus:shadow-outline mr-2">
-                        Nota
-                    </button>
-                    <button onclick="deleteTransaction('${
-                      tx.id
-                    }')" class="bg-red-500 hover:bg-red-700 text-white font-bold py-1 px-3 rounded text-sm focus:outline-none focus:shadow-outline">
-                        Hapus
-                    </button>
-                </td>
-            `;
-      if (index % 2 === 0) {
-        row.classList.add("bg-gray-50");
-      }
-    });
-  }
-
-  // 5. UPDATE KONTROL PAGINATION
-  if (paginationInfo) {
-    const totalFiltered = filteredTransactions.length;
-    const totalPages = Math.ceil(totalFiltered / rowsPerPage);
-    const displayStart = totalFiltered > 0 ? start + 1 : 0;
-    const displayEnd = Math.min(end, totalFiltered);
-
-    // Sesuaikan format sesuai HTML
-    paginationInfo.innerHTML = `Menampilkan ${displayStart} sampai ${displayEnd} dari ${totalFiltered} data`;
-  }
-
-  if (prevPageBtn) prevPageBtn.disabled = currentPage === 1;
-  if (nextPageBtn)
-    nextPageBtn.disabled = currentPage === totalPages || totalPages === 0;
-
-  hideLoading();
-}
-
-// -----------------------------------------------------
-// FUNGSI EXPORT DATA KE CSV (DAKATA)
-// -----------------------------------------------------
-
-function exportToCsv() {
-  if (filteredTransactions.length === 0) {
-    Swal.fire({
-      title: "Tidak Ada Data",
-      text: "Tidak ada transaksi yang cocok dengan filter saat ini untuk diexport.",
-      icon: "info",
-    });
-    return;
-  }
-
-  // 1. Tentukan Header CSV
-  const headers = [
-    "ID Transaksi",
-    "Waktu",
-    "Jenis",
-    "Nama Klien",
-    "Tujuan",
-    "Isi Paket (Detail)",
-    "Harga Paket (IDR)",
-    "Biaya Ongkir (IDR)",
-    "Total Transaksi (IDR)",
-  ];
-
-  let csvContent = headers.join(",") + "\n"; // Tambahkan header, dipisahkan koma
-
-  // 2. Map Data Transaksi ke Baris CSV
-  filteredTransactions.forEach((tx) => {
-    const packagePrice = tx.packagePrice || 0;
-    const shippingCost = tx.shippingCost || 0;
-    const totalTransactionValue = packagePrice + shippingCost;
-
-    let dateToDisplay = "N/A";
-    if (tx.timestamp && typeof tx.timestamp.toDate === "function") {
-      dateToDisplay = new Date(tx.timestamp.toDate()).toLocaleString("id-ID");
-    } else if (tx.timestamp) {
-      dateToDisplay = new Date(tx.timestamp).toLocaleString("id-ID");
-    }
-
-    // Konversi Isi Paket ke format string yang mudah dibaca untuk CSV
-    const fishDetails = (tx.packageContent || [])
-      .map((item) => {
-        let itemName = item.type;
-        if (itemName.startsWith("other:")) {
-          itemName = item.type.substring(6);
-        } else {
-          itemName =
-            FISH_VARIETIES.find((f) => f.id === item.type)?.name || item.type;
-        }
-        // Format: "Jumlah x Nama Ikan"
-        return `${item.count}x ${itemName}`;
-      })
-      // Gabungkan detail paket, dan bungkus dengan kutip dua jika mengandung koma
-      .join(" | ");
-
-    // 3. Susun Baris Data
-    const rowData = [
-      `'${tx.id}'`, // Kutip satu untuk menjaga ID agar tidak diubah formatnya oleh Excel
-      `"${dateToDisplay}"`,
-      tx.type === "sale" ? "JUAL" : "BELI",
-      // Pastikan data yang mungkin mengandung koma dibungkus kutip dua (CSV standard)
-      `"${(tx.clientName || "N/A").replace(/"/g, '""')}"`,
-      `"${(tx.destination || "N/A").replace(/"/g, '""')}"`,
-      `"${fishDetails.replace(/"/g, '""')}"`,
-      packagePrice,
-      shippingCost,
-      totalTransactionValue,
-    ];
-
-    // Gabungkan elemen baris, dipisahkan koma
-    csvContent += rowData.join(",") + "\n";
-  });
-
-  // 4. Buat File dan Unduh
-  const today = new Date().toISOString().slice(0, 10);
-  const filename = `dakata_transaksi_export_${today}.csv`;
-
-  // Gunakan BOM (Byte Order Mark) untuk memastikan Excel membuka file dengan encoding UTF-8 (agar karakter khusus aman)
-  const blob = new Blob(["\ufeff" + csvContent], {
-    type: "text/csv;charset=utf-8;",
-  });
-
-  const link = document.createElement("a");
-  if (link.download !== undefined) {
-    const url = URL.createObjectURL(blob);
-    link.setAttribute("href", url);
-    link.setAttribute("download", filename);
-    link.style.visibility = "hidden";
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url); // Bersihkan URL objek
-  } else {
-    Swal.fire({
-      title: "Error Browser",
-      text: "Browser Anda tidak mendukung fitur unduhan otomatis.",
-      icon: "error",
-    });
-  }
-}
-
-// -----------------------------------------------------
 // Event Handler Form Submission (DAKATA)
-// -----------------------------------------------------
 async function handleFormSubmission(e) {
   e.preventDefault();
 
@@ -1331,8 +630,570 @@ async function handleFormSubmission(e) {
   }
 }
 
+// LOGIKA CRUD: DELETE (DAKATA)
+window.deleteTransaction = async function (id) {
+  const result = await Swal.fire({
+    title: "Konfirmasi Hapus",
+    text: "Apakah Anda yakin ingin menghapus transaksi ini secara permanen?",
+    icon: "warning",
+    showCancelButton: true,
+    confirmButtonColor: "#d33",
+    cancelButtonColor: "#3085d6",
+    confirmButtonText: "Ya, Hapus!",
+    cancelButtonText: "Batal",
+  });
+
+  if (!result.isConfirmed) return;
+
+  showLoading();
+
+  try {
+    await transactionsCollection.doc(id).delete();
+    Swal.fire({
+      title: "Dihapus!",
+      text: "Transaksi berhasil dihapus.",
+      icon: "success",
+    });
+    fetchTransactions();
+  } catch (error) {
+    console.error("Error removing document: ", error);
+    Swal.fire({
+      title: "Gagal!",
+      text: "Gagal menghapus transaksi.",
+      icon: "error",
+    });
+    hideLoading();
+  }
+};
+
+// LOGIKA CRUD: EDIT / SETUP EDIT MODE (DAKATA)
+window.editTransaction = async function (id) {
+  if (!auth.currentUser) return;
+
+  showLoading();
+
+  try {
+    const doc = await transactionsCollection.doc(id).get();
+    if (!doc.exists) {
+      Swal.fire({
+        title: "Error",
+        text: "Transaksi tidak ditemukan.",
+        icon: "error",
+      });
+      return;
+    }
+    const tx = doc.data();
+
+    isEditMode = true;
+    currentEditId = id;
+    if (submitBtn) {
+      submitBtn.textContent = "Simpan Perubahan Transaksi";
+      submitBtn.classList.remove("bg-green-500", "hover:bg-green-700");
+      submitBtn.classList.add("bg-blue-500", "hover:bg-blue-700");
+    }
+    if (formTitle)
+      formTitle.textContent = `Edit Transaksi (ID: ${id.substring(0, 5)}...)`;
+    if (editModeControls) editModeControls.classList.remove("hidden");
+
+    document.getElementById("type").value = tx.type;
+    document.getElementById("package_price").value = tx.packagePrice || 0;
+    document.getElementById("shipping_cost").value = tx.shippingCost || 0;
+    document.getElementById("destination").value = tx.destination || "";
+    document.getElementById("client_name").value = tx.clientName || "";
+
+    renderFishInputs(tx.packageContent);
+
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  } catch (error) {
+    console.error("Error fetching document for edit: ", error);
+    Swal.fire({
+      title: "Error",
+      text: "Gagal memuat data transaksi untuk diedit.",
+      icon: "error",
+    });
+  } finally {
+    hideLoading();
+  }
+};
+
+// LOGIKA RESET FORM (DAKATA)
+window.resetForm = function () {
+  isEditMode = false;
+  currentEditId = null;
+  if (form) form.reset();
+
+  if (submitBtn) {
+    submitBtn.textContent = "Catat Transaksi";
+    submitBtn.classList.remove("bg-blue-500", "hover:bg-blue-700");
+    submitBtn.classList.add("bg-green-500", "hover:bg-green-700");
+  }
+  if (formTitle) formTitle.textContent = "Input Transaksi Baru";
+  if (editModeControls) editModeControls.classList.add("hidden");
+
+  deleteFishInputs();
+  addFishInput();
+};
+
+// =====================================================
+// FUNGSI FETCH, FILTER, PAGINATION, DAN SALDO DAKATA
+// =====================================================
+
+// 1. Fungsi Mengambil Data Transaksi dari Firebase (Fetch)
+async function fetchTransactions() {
+  if (!auth.currentUser) return;
+  showLoading();
+
+  try {
+    const snapshot = await transactionsCollection
+      .orderBy("timestamp", "desc")
+      .get();
+
+    allTransactions = snapshot.docs.map((doc) => ({
+      id: doc.id,
+      ...doc.data(),
+    }));
+
+    applyFiltersAndPagination();
+  } catch (error) {
+    console.error("Error fetching transactions: ", error);
+    if (auth.currentUser) {
+      Swal.fire({
+        title: "Koneksi Error",
+        text: "Gagal memuat data dari database. Cek koneksi dan aturan Firebase (Rules).",
+        icon: "error",
+      });
+    }
+  }
+}
+
+// 2. Fungsi Menerapkan Filter, Search, dan Pagination DAKATA
+function applyFiltersAndPagination() {
+  if (!allTransactions.length) {
+    if (tableBody)
+      tableBody.innerHTML =
+        '<tr><td colspan="5" class="py-6 text-center text-gray-500">Belum ada data transaksi.</td></tr>';
+    if (paginationInfo) paginationInfo.textContent = "0 data";
+    if (prevPageBtn) prevPageBtn.disabled = true;
+    if (nextPageBtn) nextPageBtn.disabled = true;
+    if (totalBalanceEl) totalBalanceEl.textContent = formatRupiah(0);
+    hideLoading();
+    return;
+  }
+
+  // 1. FILTERING & SEARCHING
+  const filterType = filterSelect ? filterSelect.value : "all";
+  const searchTerm = searchInput ? searchInput.value.toLowerCase().trim() : "";
+
+  filteredTransactions = allTransactions.filter((tx) => {
+    if (filterType !== "all" && tx.type !== filterType) return false;
+
+    if (searchTerm) {
+      const clientName = (tx.clientName || "").toLowerCase();
+      const destination = (tx.destination || "").toLowerCase();
+      const fishDetailsText = (tx.packageContent || [])
+        .map((item) => {
+          let itemName = item.type;
+          if (itemName.startsWith("other:")) itemName = item.type.substring(6);
+          else
+            itemName =
+              FISH_VARIETIES.find((f) => f.id === item.type)?.name || item.type;
+          return itemName;
+        })
+        .join(" ")
+        .toLowerCase();
+
+      if (
+        !clientName.includes(searchTerm) &&
+        !destination.includes(searchTerm) &&
+        !fishDetailsText.includes(searchTerm)
+      ) {
+        return false;
+      }
+    }
+    return true;
+  });
+
+  // 2. PERHITUNGAN SALDO (Diambil dari SEMUA transaksi)
+  let totalBalance = 0;
+  allTransactions.forEach((tx) => {
+    const packagePrice = tx.packagePrice || 0;
+    if (tx.type === "sale") totalBalance += packagePrice;
+    else totalBalance -= packagePrice;
+  });
+
+  if (totalBalanceEl) {
+    totalBalanceEl.textContent = formatRupiah(totalBalance);
+    totalBalanceEl.classList.remove(
+      "text-blue-600",
+      "text-green-600",
+      "text-red-600"
+    );
+    if (totalBalance < 0) totalBalanceEl.classList.add("text-red-600");
+    else if (totalBalance > 0) totalBalanceEl.classList.add("text-green-600");
+    else totalBalanceEl.classList.add("text-blue-600");
+  }
+
+  // 3. PAGINATION
+  const totalPages = Math.ceil(filteredTransactions.length / rowsPerPage);
+
+  if (currentPage > totalPages && totalPages > 0) currentPage = totalPages;
+  if (currentPage < 1 && totalPages > 0) currentPage = 1;
+  else if (totalPages === 0) currentPage = 1;
+
+  const start = (currentPage - 1) * rowsPerPage;
+  const end = start + rowsPerPage;
+  const transactionsToDisplay = filteredTransactions.slice(start, end);
+
+  // 4. RENDERING
+  if (tableBody) tableBody.innerHTML = "";
+
+  if (transactionsToDisplay.length === 0) {
+    if (tableBody)
+      tableBody.innerHTML =
+        '<tr><td colspan="5" class="py-6 text-center text-gray-500">Tidak ada transaksi yang cocok dengan kriteria pencarian/filter.</td></tr>';
+  } else {
+    transactionsToDisplay.forEach((tx, index) => {
+      const packagePrice = tx.packagePrice || 0;
+      const shippingCost = tx.shippingCost || 0;
+      const totalTransactionValue = packagePrice + shippingCost;
+      const packageContent = tx.packageContent || [];
+
+      const fishDetails = packageContent
+        .map((item) => {
+          let itemName = item.type;
+          if (itemName.startsWith("other:")) itemName = item.type.substring(6);
+          else
+            itemName =
+              FISH_VARIETIES.find((f) => f.id === item.type)?.name || item.type;
+          return `${item.count}x ${itemName}`;
+        })
+        .join(", ");
+
+      let dateToDisplay = "N/A";
+      if (tx.timestamp && typeof tx.timestamp.toDate === "function") {
+        dateToDisplay = new Date(tx.timestamp.toDate()).toLocaleString("id-ID");
+      } else if (tx.timestamp) {
+        dateToDisplay = new Date(tx.timestamp).toLocaleString("id-ID");
+      }
+
+      const row = tableBody.insertRow();
+      const typeClass = tx.type === "sale" ? "text-green-600" : "text-red-600";
+
+      row.innerHTML = `
+                <td class="py-3 px-6 whitespace-nowrap">${dateToDisplay}</td>
+                <td class="py-3 px-6 whitespace-nowrap font-semibold ${typeClass}">${
+        tx.type === "sale" ? "JUAL" : "BELI"
+      }</td>
+                <td class="py-3 px-6 text-sm min-w-[250px]">
+                    <span class="font-semibold">Nama:</span> ${
+                      tx.clientName || "-"
+                    } <br> 
+                    <span class="font-semibold">Isi:</span> ${
+                      fishDetails || "-"
+                    } <br>
+                    <span class="font-semibold">Tujuan:</span> ${
+                      tx.destination || "-"
+                    } 
+                </td>
+                <td class="py-3 px-6 whitespace-nowrap font-bold">
+                    Paket: ${formatRupiah(packagePrice)} <br>
+                    Ongkir: ${formatRupiah(shippingCost)} <br>
+                    <hr class="my-1 border-gray-300">
+                    <span class="${typeClass}">TOTAL: ${formatRupiah(
+        totalTransactionValue
+      )}</span>
+                </td>
+                <td class="py-3 px-6 text-center whitespace-nowrap">
+                    <button onclick="editTransaction('${
+                      tx.id
+                    }')" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-1 px-3 rounded text-sm focus:outline-none focus:shadow-outline mr-2">
+                        Edit
+                    </button>
+                    <button onclick="generateInvoice('${
+                      tx.id
+                    }')" class="bg-yellow-500 hover:bg-yellow-700 text-white font-bold py-1 px-3 rounded text-sm focus:outline-none focus:shadow-outline mr-2">
+                        Nota
+                    </button>
+                    <button onclick="deleteTransaction('${
+                      tx.id
+                    }')" class="bg-red-500 hover:bg-red-700 text-white font-bold py-1 px-3 rounded text-sm focus:outline-none focus:shadow-outline">
+                        Hapus
+                    </button>
+                </td>
+            `;
+      if (index % 2 === 0) row.classList.add("bg-gray-50");
+    });
+  }
+
+  // 5. UPDATE KONTROL PAGINATION
+  if (paginationInfo) {
+    const totalFiltered = filteredTransactions.length;
+    const totalPages = Math.ceil(totalFiltered / rowsPerPage);
+    const displayStart = totalFiltered > 0 ? start + 1 : 0;
+    const displayEnd = Math.min(end, totalFiltered);
+    paginationInfo.innerHTML = `Menampilkan ${displayStart} sampai ${displayEnd} dari ${totalFiltered} data`;
+  }
+
+  if (prevPageBtn) prevPageBtn.disabled = currentPage === 1;
+  if (nextPageBtn)
+    nextPageBtn.disabled = currentPage === totalPages || totalPages === 0;
+
+  hideLoading();
+}
+
+// FUNGSI EXPORT DATA KE CSV (DAKATA)
+function exportToCsv() {
+  if (filteredTransactions.length === 0) {
+    Swal.fire({
+      title: "Tidak Ada Data",
+      text: "Tidak ada transaksi yang cocok dengan filter saat ini untuk diexport.",
+      icon: "info",
+    });
+    return;
+  }
+
+  const headers = [
+    "ID Transaksi",
+    "Waktu",
+    "Jenis",
+    "Nama Klien",
+    "Tujuan",
+    "Isi Paket (Detail)",
+    "Harga Paket (IDR)",
+    "Biaya Ongkir (IDR)",
+    "Total Transaksi (IDR)",
+  ];
+
+  let csvContent = headers.join(",") + "\n";
+
+  filteredTransactions.forEach((tx) => {
+    const packagePrice = tx.packagePrice || 0;
+    const shippingCost = tx.shippingCost || 0;
+    const totalTransactionValue = packagePrice + shippingCost;
+
+    let dateToDisplay = "N/A";
+    if (tx.timestamp && typeof tx.timestamp.toDate === "function") {
+      dateToDisplay = new Date(tx.timestamp.toDate()).toLocaleString("id-ID");
+    } else if (tx.timestamp) {
+      dateToDisplay = new Date(tx.timestamp).toLocaleString("id-ID");
+    }
+
+    const fishDetails = (tx.packageContent || [])
+      .map((item) => {
+        let itemName = item.type;
+        if (itemName.startsWith("other:")) itemName = item.type.substring(6);
+        else
+          itemName =
+            FISH_VARIETIES.find((f) => f.id === item.type)?.name || item.type;
+        return `${item.count}x ${itemName}`;
+      })
+      .join(" | ");
+
+    const rowData = [
+      `'${tx.id}'`,
+      `"${dateToDisplay}"`,
+      tx.type === "sale" ? "JUAL" : "BELI",
+      `"${(tx.clientName || "N/A").replace(/"/g, '""')}"`,
+      `"${(tx.destination || "N/A").replace(/"/g, '""')}"`,
+      `"${fishDetails.replace(/"/g, '""')}"`,
+      packagePrice,
+      shippingCost,
+      totalTransactionValue,
+    ];
+    csvContent += rowData.join(",") + "\n";
+  });
+
+  const today = new Date().toISOString().slice(0, 10);
+  const filename = `dakata_transaksi_export_${today}.csv`;
+
+  // Tambahkan BOM untuk kompatibilitas Excel/UTF-8
+  const blob = new Blob(["\ufeff" + csvContent], {
+    type: "text/csv;charset=utf-8;",
+  });
+
+  const link = document.createElement("a");
+  if (link.download !== undefined) {
+    const url = URL.createObjectURL(blob);
+    link.setAttribute("href", url);
+    link.setAttribute("download", filename);
+    link.style.visibility = "hidden";
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  } else {
+    Swal.fire({
+      title: "Error Browser",
+      text: "Browser Anda tidak mendukung fitur unduhan otomatis.",
+      icon: "error",
+    });
+  }
+}
+
+// LOGIKA PEMBUATAN NOTA/INVOICE (DAKATA)
+window.generateInvoice = async function (id) {
+  showLoading();
+  try {
+    const doc = await transactionsCollection.doc(id).get();
+    if (!doc.exists) {
+      Swal.fire({
+        title: "Error",
+        text: "Transaksi tidak ditemukan.",
+        icon: "error",
+      });
+      return;
+    }
+
+    const tx = doc.data();
+    const packageContent = tx.packageContent || [];
+
+    const destination = tx.destination || "-";
+    const clientName = tx.clientName || "-";
+    const packagePrice = tx.packagePrice || 0;
+    const shippingCost = tx.shippingCost || 0;
+    const totalAmount = packagePrice + shippingCost;
+
+    const SHOP_NAME = "DAKATA Aquatic";
+    const LOGO_PATH = "logo.png";
+
+    let dateToDisplay = new Date().toLocaleDateString("id-ID", {
+      day: "2-digit",
+      month: "long",
+      year: "numeric",
+    });
+    if (tx.timestamp && typeof tx.timestamp.toDate === "function") {
+      dateToDisplay = tx.timestamp.toDate().toLocaleDateString("id-ID", {
+        day: "2-digit",
+        month: "long",
+        year: "numeric",
+      });
+    }
+
+    let itemDetailsHTML = "";
+
+    packageContent.forEach((item, index) => {
+      let itemName = item.type;
+      if (itemName.startsWith("other:")) itemName = item.type.substring(6);
+      else
+        itemName =
+          FISH_VARIETIES.find((f) => f.id === item.type)?.name || item.type;
+
+      itemDetailsHTML += `
+                <tr>
+                    <td>${index + 1}</td>
+                    <td>${itemName}</td>
+                    <td style="text-align: center;">${item.count}</td>
+                </tr>
+            `;
+    });
+
+    // Template HTML untuk Invoice
+    const invoiceHTML = `
+            <html>
+            <head>
+                <title>Nota Transaksi #${id.substring(0, 8)}</title>
+                <style>
+                    body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; font-size: 12px; margin: 0; padding: 0; background-color: #f0f0f0; }
+                    .invoice-page { width: 210mm; min-height: 297mm; margin: 10mm auto; background: white; box-shadow: 0 0 5px rgba(0, 0, 0, 0.1); padding: 20mm; position: relative; }
+                    .watermark { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); opacity: 0.08; z-index: 0; pointer-events: none; }
+                    .watermark img { width: 600px; height: auto; }
+                    .header { display: flex; justify-content: space-between; align-items: center; border-bottom: 3px solid #007bff; padding-bottom: 10px; margin-bottom: 20px; }
+                    .header h1 { color: #007bff; font-size: 20px; margin: 0; }
+                    .header img { width: 70px; height: 70px; }
+                    .header-info { padding: 10px 0; border-bottom: 1px dashed #ccc; margin-bottom: 15px; }
+                    .header-info p { margin: 3px 0; }
+                    table { width: 100%; border-collapse: collapse; margin-bottom: 20px; background-color: #fff; }
+                    th, td { padding: 10px; text-align: left; border: 1px solid #ddd; }
+                    th { background-color: #e9f5ff; color: #333; border-bottom: 2px solid #007bff; }
+                    tr:nth-child(even) { background-color: #f9f9f9; } 
+                    .total-box { width: 50%; float: right; padding: 10px; border: 1px solid #007bff; background-color: #f7faff; }
+                    .total-box p { text-align: right; margin: 5px 0; font-size: 13px; }
+                    .total-box .final-total { font-size: 16px; font-weight: bold; color: #dc3545; border-top: 1px solid #007bff; padding-top: 5px; margin-top: 5px; }
+                    .footer { clear: both; text-align: center; margin-top: 50px; padding-top: 10px; border-top: 1px solid #aaa; font-style: italic; color: #555; }
+                    @media print {
+                        body { background: white; }
+                        .invoice-page { box-shadow: none; margin: 0; border: none; }
+                        th, .total-box { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+                        th { background-color: #e9f5ff !important; }
+                        .total-box { background-color: #f7faff !important; border: 1px solid #333; }
+                        .watermark { opacity: 0.1 !important; } 
+                    }
+                </style>
+            </head>
+            <body>
+                <div class="invoice-page">
+                    <div class="watermark"><img src="${LOGO_PATH}" alt="${SHOP_NAME} Logo"></div>
+                    
+                    <div class="header">
+                        <div>
+                            <h1>NOTA TRANSAKSI PEMBELIAN</h1>
+                            <p style="color: #555;">${SHOP_NAME}</p>
+                        </div>
+                        <img src="${LOGO_PATH}" alt="Logo Kecil" style="width: 70px; height: 70px;">
+                    </div>
+
+                    <div class="header-info">
+                        <p><strong>Nomor Nota:</strong> #${id.substring(
+                          0,
+                          8
+                        )}</p>
+                        <p><strong>Tanggal:</strong> ${dateToDisplay}</p>
+                        <p><strong>Kepada:</strong> ${clientName}</p>
+                        <p><strong>Tujuan Pengiriman:</strong> ${destination}</p>
+                    </div>
+
+                    <table>
+                        <thead>
+                            <tr>
+                                <th style="width: 5%;">No.</th>
+                                <th>Deskripsi Item (Isi Paket)</th>
+                                <th style="width: 15%; text-align: center;">Jumlah</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${itemDetailsHTML}
+                        </tbody>
+                    </table>
+
+                    <div class="total-box">
+                        <p>Subtotal (Harga Paket): IDR ${packagePrice.toLocaleString(
+                          "id-ID"
+                        )}</p>
+                        <p>Biaya Kirim (Ongkir): IDR ${shippingCost.toLocaleString(
+                          "id-ID"
+                        )}</p>
+                        <p class="final-total">TOTAL AKHIR: IDR ${totalAmount.toLocaleString(
+                          "id-ID"
+                        )}</p>
+                    </div>
+
+                    <div class="footer">
+                        <p>Terima kasih atas transaksinya. Mohon periksa kembali rincian di atas.</p>
+                        <p>Dibuat pada ${new Date().toLocaleString("id-ID")}</p>
+                    </div>
+                </div>
+            </body>
+            </html>
+        `;
+
+    const printWindow = window.open("", "", "height=700,width=800");
+    printWindow.document.write(invoiceHTML);
+    printWindow.document.close();
+    printWindow.print();
+  } catch (error) {
+    console.error("Error generating invoice: ", error);
+    Swal.fire({
+      title: "Error",
+      text: "Gagal membuat nota. Periksa data transaksi atau koneksi Anda.",
+      icon: "error",
+    });
+  } finally {
+    hideLoading();
+  }
+};
+
 // =========================================================
-// LOGIKA REKENING PRIBADI (BARU DAN TERINTEGRASI)
+// LOGIKA REKENING PRIBADI
 // =========================================================
 
 /**
@@ -1342,15 +1203,12 @@ async function handleFormSubmission(e) {
 function switchView(viewName) {
   showLoading();
 
-  // Pastikan DOM Elements sudah terinisialisasi
   if (!form) initializeDOMElements();
 
-  // Atur tampilan container
   if (viewName === "main") {
     appContainer.classList.remove("hidden");
     if (personalContainer) personalContainer.classList.add("hidden");
 
-    // Atur tombol navigasi
     if (dakattaHomeBtn) dakattaHomeBtn.classList.add("hidden");
     if (
       auth.currentUser &&
@@ -1360,19 +1218,17 @@ function switchView(viewName) {
       personalFinanceBtn.classList.remove("hidden");
     }
 
-    fetchTransactions(); // Muat data DAKATA
+    fetchTransactions();
   } else if (viewName === "personal") {
     appContainer.classList.add("hidden");
     if (personalContainer) personalContainer.classList.remove("hidden");
 
-    // Atur tombol navigasi
     if (dakattaHomeBtn) dakattaHomeBtn.classList.remove("hidden");
     if (personalFinanceBtn) personalFinanceBtn.classList.add("hidden");
 
-    // MENGGANTI PANGGILAN FUNGSI
-    fetchPersonalTransactions(); // Muat data pribadi
+    fetchPersonalTransactions();
   } else {
-    hideLoading(); // Safety net
+    hideLoading();
   }
 }
 
@@ -1389,12 +1245,7 @@ async function handlePersonalSubmit(e) {
   const value = parseInt(valueInput.value);
   const user = auth.currentUser;
 
-  // Validasi
-  if (!user) {
-    Swal.fire("Akses Ditolak", "Anda harus login.", "error");
-    return;
-  }
-  if (!value || value <= 0 || isNaN(value) || !note.trim()) {
+  if (!user || !value || value <= 0 || isNaN(value) || !note.trim()) {
     Swal.fire("Error", "Nilai dan Catatan harus diisi dengan benar.", "error");
     return;
   }
@@ -1404,7 +1255,7 @@ async function handlePersonalSubmit(e) {
   try {
     await personalTransactionsCollection.add({
       userId: user.uid,
-      type: type, // MASUK atau KELUAR
+      type: type,
       value: value,
       note: note.trim(),
       timestamp: firebase.firestore.FieldValue.serverTimestamp(),
@@ -1412,22 +1263,15 @@ async function handlePersonalSubmit(e) {
 
     personalForm.reset();
     Swal.fire("Berhasil", "Transaksi pribadi berhasil dicatat!", "success");
-    // MENGGANTI PANGGILAN FUNGSI
-    fetchPersonalTransactions(); // Refresh list
+    fetchPersonalTransactions();
   } catch (error) {
     console.error("Error mencatat transaksi pribadi:", error);
     Swal.fire("Gagal", "Gagal mencatat transaksi pribadi.", "error");
-  } finally {
-    // hideLoading() dipanggil di fetchPersonalTransactions -> applyPersonalFiltersAndPagination
   }
+  // hideLoading dipanggil di applyPersonalFiltersAndPagination
 }
 
-// -----------------------------------------------------
 // 1. Fungsi Mengambil Data Transaksi Pribadi (Fetch All)
-// -----------------------------------------------------
-/**
- * Mengambil SEMUA data transaksi pribadi dari Firebase dan memicu rendering.
- */
 async function fetchPersonalTransactions() {
   const user = auth.currentUser;
   if (!user) return;
@@ -1440,13 +1284,11 @@ async function fetchPersonalTransactions() {
       .orderBy("timestamp", "desc")
       .get();
 
-    // Simpan semua data transaksi ke variabel global
     allPersonalTransactions = snapshot.docs.map((doc) => ({
       id: doc.id,
       ...doc.data(),
     }));
 
-    // Terapkan filter dan render tampilan
     applyPersonalFiltersAndPagination();
   } catch (error) {
     console.error("Error fetching personal transactions:", error);
@@ -1454,17 +1296,14 @@ async function fetchPersonalTransactions() {
       personalTransactionsList.innerHTML =
         '<p class="text-center text-red-500 p-8">Gagal memuat data pribadi. Cek koneksi Anda.</p>';
     }
-    // Update Saldo Pribadi ke 0
     if (personalBalanceContainer) {
       const balanceClass = "text-blue-500";
       personalBalanceContainer.innerHTML = `
             <p class="mb-2 md:mb-0 w-full text-center">
                 Total Saldo:
-                <span
-                    class="font-bold text-4xl block mt-2 ${balanceClass}"
-                    >
-                    ${formatRupiah(0)}
-                </span>
+                <span class="font-bold text-4xl block mt-2 ${balanceClass}">${formatRupiah(
+        0
+      )}</span>
             </p>
         `;
     }
@@ -1472,12 +1311,7 @@ async function fetchPersonalTransactions() {
   }
 }
 
-// -----------------------------------------------------
 // 2. Fungsi Menerapkan Filter, Search, dan Pagination PRIBADI
-// -----------------------------------------------------
-/**
- * Menerapkan Filter, Search, dan Pagination pada data transaksi pribadi.
- */
 function applyPersonalFiltersAndPagination() {
   if (!allPersonalTransactions.length) {
     if (personalTransactionsList)
@@ -1486,17 +1320,15 @@ function applyPersonalFiltersAndPagination() {
     if (personalPaginationInfo) personalPaginationInfo.textContent = "0 data";
     if (personalPrevPageBtn) personalPrevPageBtn.disabled = true;
     if (personalNextPageBtn) personalNextPageBtn.disabled = true;
-    // Update Saldo Pribadi ke 0
+
     if (personalBalanceContainer) {
       const balanceClass = "text-blue-500";
       personalBalanceContainer.innerHTML = `
                 <p class="mb-2 md:mb-0 w-full text-center">
                     Total Saldo:
-                    <span
-                        class="font-bold text-4xl block mt-2 ${balanceClass}"
-                        >
-                        ${formatRupiah(0)}
-                    </span>
+                    <span class="font-bold text-4xl block mt-2 ${balanceClass}">${formatRupiah(
+        0
+      )}</span>
                 </p>
             `;
     }
@@ -1505,41 +1337,27 @@ function applyPersonalFiltersAndPagination() {
   }
 
   // 1. FILTERING & SEARCHING
-  // Nilai filter diambil dari select element (ASUMSI nilai: 'all', 'MASUK', 'KELUAR')
   const filterType = personalFilterSelect ? personalFilterSelect.value : "all";
   const searchTerm = personalSearchInput
     ? personalSearchInput.value.toLowerCase().trim()
     : "";
 
   filteredPersonalTransactions = allPersonalTransactions.filter((tx) => {
-    // Filter Jenis (MASUK, KELUAR, atau all)
-    if (filterType !== "all" && tx.type !== filterType) {
-      return false;
-    }
-
-    // Search (hanya pada field 'note')
+    if (filterType !== "all" && tx.type !== filterType) return false;
     if (searchTerm) {
       const note = (tx.note || "").toLowerCase();
-      if (!note.includes(searchTerm)) {
-        return false;
-      }
+      if (!note.includes(searchTerm)) return false;
     }
-
     return true;
   });
 
   // 2. PERHITUNGAN SALDO (Diambil dari SEMUA transaksi)
-  // Saldo dihitung dari SEMUA transaksi, bukan hanya yang difilter.
   let personalBalance = 0;
   allPersonalTransactions.forEach((data) => {
-    if (data.type === "MASUK") {
-      personalBalance += data.value;
-    } else {
-      personalBalance -= data.value;
-    }
+    if (data.type === "MASUK") personalBalance += data.value;
+    else personalBalance -= data.value;
   });
 
-  // Update Saldo Pribadi
   if (personalBalanceContainer) {
     const balanceClass =
       personalBalance >= 0 ? "text-green-500" : "text-red-500";
@@ -1547,11 +1365,9 @@ function applyPersonalFiltersAndPagination() {
     personalBalanceContainer.innerHTML = `
             <p class="mb-2 md:mb-0 w-full text-center">
                 Total Saldo:
-                <span
-                    class="font-bold text-4xl block mt-2 ${balanceClass}"
-                    >
-                    ${formatRupiah(personalBalance)}
-                </span>
+                <span class="font-bold text-4xl block mt-2 ${balanceClass}">${formatRupiah(
+      personalBalance
+    )}</span>
             </p>
         `;
   }
@@ -1560,15 +1376,10 @@ function applyPersonalFiltersAndPagination() {
   const totalFiltered = filteredPersonalTransactions.length;
   const totalPages = Math.ceil(totalFiltered / personalRowsPerPage);
 
-  // Koreksi halaman jika keluar batas
-  if (personalCurrentPage > totalPages && totalPages > 0) {
+  if (personalCurrentPage > totalPages && totalPages > 0)
     personalCurrentPage = totalPages;
-  }
-  if (personalCurrentPage < 1 && totalPages > 0) {
-    personalCurrentPage = 1;
-  } else if (totalPages === 0) {
-    personalCurrentPage = 1;
-  }
+  if (personalCurrentPage < 1 && totalPages > 0) personalCurrentPage = 1;
+  else if (totalPages === 0) personalCurrentPage = 1;
 
   const start = (personalCurrentPage - 1) * personalRowsPerPage;
   const end = start + personalRowsPerPage;
@@ -1638,6 +1449,8 @@ function applyPersonalFiltersAndPagination() {
 
   // 5. UPDATE KONTROL PAGINATION
   if (personalPaginationInfo) {
+    const totalFiltered = filteredPersonalTransactions.length;
+    const totalPages = Math.ceil(totalFiltered / personalRowsPerPage);
     const displayStart = totalFiltered > 0 ? start + 1 : 0;
     const displayEnd = Math.min(end, totalFiltered);
 
@@ -1653,9 +1466,7 @@ function applyPersonalFiltersAndPagination() {
   hideLoading();
 }
 
-// -----------------------------------------------------
 // LOGIKA CRUD: DELETE (REKENING PRIBADI)
-// -----------------------------------------------------
 window.deletePersonalTransaction = async function (id) {
   const result = await Swal.fire({
     title: "Konfirmasi Hapus",
@@ -1679,7 +1490,7 @@ window.deletePersonalTransaction = async function (id) {
       text: "Catatan pribadi berhasil dihapus.",
       icon: "success",
     });
-    fetchPersonalTransactions(); // Refresh list
+    fetchPersonalTransactions();
   } catch (error) {
     console.error("Error removing personal document: ", error);
     Swal.fire({
@@ -1691,9 +1502,7 @@ window.deletePersonalTransaction = async function (id) {
   }
 };
 
-// -----------------------------------------------------
 // LOGIKA CRUD: EDIT (REKENING PRIBADI)
-// -----------------------------------------------------
 window.editPersonalTransaction = async function (id) {
   showLoading();
   let tx;
@@ -1747,7 +1556,6 @@ window.editPersonalTransaction = async function (id) {
   if (formValues) {
     showLoading();
     try {
-      // Hapus timestamp karena kita tidak ingin mengubah waktu catatan
       delete formValues.timestamp;
       await personalTransactionsCollection.doc(id).update(formValues);
       Swal.fire(
