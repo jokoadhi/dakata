@@ -2,3 +2,124 @@
 /* Anda bisa menambahkan CSS kustom di sini jika sangat diperlukan. */
 /* Misalnya, custom font, atau override default Tailwind. */
 /* Untuk aplikasi ini, kemungkinan besar bisa dibiarkan kosong. */
+/* Anda dapat meletakkan ini di dalam tag <style> di head HTML Anda */
+html,
+body {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+}
+
+.bubbles-background {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  z-index: -1;
+  /* PASTIKAN background-color ADA DI SINI */
+  background-color: #f3f4f6; /* Ini adalah warna bg-gray-100 */
+}
+
+.bubble {
+  position: absolute;
+  bottom: -100px; /* Mulai dari bawah layar */
+  width: 40px;
+  height: 40px;
+  background-color: rgba(59, 130, 246, 0.1); /* Warna Biru Muda Transparan */
+  border-radius: 50%;
+  animation: bubble-up 15s infinite ease-in-out; /* Animasi utama */
+  box-shadow: 0 0 10px rgba(59, 130, 246, 0.2); /* Efek cahaya */
+}
+
+/* Kunci Animasi (Bubble bergerak dari bawah ke atas) */
+@keyframes bubble-up {
+  0% {
+    transform: translateY(0) scale(1);
+    opacity: 0.5;
+  }
+  50% {
+    opacity: 0.8; /* Sedikit 'mentul' di tengah */
+  }
+  100% {
+    transform: translateY(-100vh) scale(1.5); /* Bergerak ke atas layar */
+    opacity: 0;
+  }
+}
+
+/* Untuk membuat setiap bubble unik: tambahkan delay, durasi, dan ukuran acak */
+.bubbles-background .bubble:nth-child(1) {
+  left: 10%;
+  animation-duration: 15s;
+  width: 60px;
+  height: 60px;
+  opacity: 0.4;
+}
+.bubbles-background .bubble:nth-child(2) {
+  left: 20%;
+  animation-duration: 20s;
+  animation-delay: 2s;
+  width: 30px;
+  height: 30px;
+}
+.bubbles-background .bubble:nth-child(3) {
+  left: 35%;
+  animation-duration: 12s;
+  animation-delay: 4s;
+  width: 50px;
+  height: 50px;
+  opacity: 0.6;
+}
+.bubbles-background .bubble:nth-child(4) {
+  left: 50%;
+  animation-duration: 25s;
+  width: 80px;
+  height: 80px;
+  opacity: 0.3;
+}
+.bubbles-background .bubble:nth-child(5) {
+  left: 65%;
+  animation-duration: 18s;
+  animation-delay: 3s;
+  width: 45px;
+  height: 45px;
+}
+.bubbles-background .bubble:nth-child(6) {
+  left: 75%;
+  animation-duration: 10s;
+  animation-delay: 5s;
+  width: 70px;
+  height: 70px;
+  opacity: 0.7;
+}
+.bubbles-background .bubble:nth-child(7) {
+  left: 90%;
+  animation-duration: 22s;
+  animation-delay: 1s;
+  width: 55px;
+  height: 55px;
+}
+.bubbles-background .bubble:nth-child(8) {
+  left: 5%;
+  animation-duration: 17s;
+  animation-delay: 6s;
+  width: 25px;
+  height: 25px;
+  opacity: 0.5;
+}
+.bubbles-background .bubble:nth-child(9) {
+  left: 40%;
+  animation-duration: 13s;
+  animation-delay: 7s;
+  width: 35px;
+  height: 35px;
+}
+.bubbles-background .bubble:nth-child(10) {
+  left: 85%;
+  animation-duration: 28s;
+  animation-delay: 8s;
+  width: 90px;
+  height: 90px;
+  opacity: 0.2;
+}

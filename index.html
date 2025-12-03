@@ -23,7 +23,7 @@
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script>
   </head>
-  <body class="bg-gray-100 font-sans leading-normal tracking-normal">
+  <body class="font-sans leading-normal tracking-normal">
     <script>
       // Masukkan konfigurasi Firebase Anda di sini
       const firebaseConfig = {
@@ -43,6 +43,19 @@
       const auth = firebase.auth();
     </script>
 
+    <div class="bubbles-background">
+      <div class="bubble"></div>
+      <div class="bubble"></div>
+      <div class="bubble"></div>
+      <div class="bubble"></div>
+      <div class="bubble"></div>
+      <div class="bubble"></div>
+      <div class="bubble"></div>
+      <div class="bubble"></div>
+      <div class="bubble"></div>
+      <div class="bubble"></div>
+    </div>
+
     <div
       id="loading-overlay"
       class="fixed inset-0 bg-gray-900 bg-opacity-75 flex justify-center items-center z-50 hidden"
@@ -57,7 +70,7 @@
 
     <div
       id="login-container"
-      class="min-h-screen flex items-center justify-center bg-gray-100 p-4"
+      class="min-h-screen flex items-center justify-center p-4"
     >
       <div
         class="w-full max-w-sm bg-white p-8 rounded-xl shadow-2xl transition duration-500 ease-in-out transform hover:shadow-3xl"
@@ -580,7 +593,7 @@
             <div class="md:col-span-3 mt-4">
               <button
                 type="submit"
-                class="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline w-full"
+                class="bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline w-full"
               >
                 Catat Transaksi Pribadi
               </button>
