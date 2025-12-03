@@ -1,3 +1,7 @@
+// =========================================================
+// 1. INI ADALAH FILE: script.js (KODE LENGKAP)
+// =========================================================
+
 // =====================================================
 // INISIALISASI
 // CATATAN: auth, db, dan transactionsCollection
@@ -6,13 +10,31 @@
 
 // DOM Elements terkait Auth & Loading
 const loginContainer = document.getElementById("login-container");
-const appContainer = document.getElementById("app-container");
+const appContainer = document.getElementById("app-container"); // Container utama DAKATA
 const loginForm = document.getElementById("login-form");
 const logoutBtn = document.getElementById("logout-btn");
 const loginErrorEl = document.getElementById("login-error");
 const loadingOverlay = document.getElementById("loading-overlay");
 
-// Variabel Global
+// =========================================================
+// VARIABEL & KOLEKSI KHUSUS REKENING PRIBADI
+// =========================================================
+
+// Email pengguna yang memiliki akses penuh ke fitur Rekening Pribadi
+const ADMIN_EMAIL = "dakata@gmail.com"; // Pastikan email ini sama dengan yang di index.html
+
+// PENTING: Koleksi Firebase baru untuk data pribadi
+const personalTransactionsCollection = db.collection("personalTransactions");
+
+// DOM Elements terkait Rekening Pribadi
+let personalFinanceBtn,
+  personalContainer,
+  personalForm,
+  personalTransactionsList,
+  dakattaHomeBtn;
+let personalBalanceContainer; // Container Saldo Pribadi (diganti dari personalBalanceEl)
+
+// Variabel Global DAKATA Aquatic (Diambil dari DOM yang sudah ada)
 let FISH_VARIETIES = [];
 let form,
   tableBody,
@@ -24,8 +46,8 @@ let form,
   editModeControls;
 
 // VARIABEL BARU UNTUK FILTER, SEARCH, PAGINATION, dan EXPORT
-let allTransactions = []; // Menyimpan semua data transaksi
-let filteredTransactions = []; // Menyimpan data setelah difilter/search
+let allTransactions = []; // Menyimpan semua data transaksi DAKATA
+let filteredTransactions = []; // Menyimpan data setelah difilter/search DAKATA
 let currentPage = 1;
 const rowsPerPage = 10;
 let filterSelect,
@@ -40,7 +62,7 @@ let isEditMode = false;
 let currentEditId = null;
 
 // ==========================================================
-// FUNGSI PENGATUR LOADING
+// FUNGSI PENGATUR LOADING & UTILITY
 // ==========================================================
 function showLoading() {
   if (loadingOverlay) loadingOverlay.classList.remove("hidden");
@@ -50,27 +72,54 @@ function hideLoading() {
   if (loadingOverlay) loadingOverlay.classList.add("hidden");
 }
 
+/**
+ * Fungsi untuk format mata uang IDR
+ * @param {number} amount
+ */
+function formatRupiah(amount) {
+  if (isNaN(amount) || amount === null) return "IDR 0";
+  const sign = amount < 0 ? "-" : "";
+  const absAmount = Math.abs(amount);
+  return sign + "IDR " + new Intl.NumberFormat("id-ID").format(absAmount);
+}
+
 // -----------------------------------------------------
 // FUNGSI AUTH DAN TOGGLE APLIKASI
 // -----------------------------------------------------
 
-function toggleApp(loggedIn) {
+/**
+ * Mengatur tampilan aplikasi (Login, DAKATA Main, atau Rekening Pribadi)
+ * @param {boolean} loggedIn - Status login
+ * @param {firebase.User | null} user - Objek user dari Firebase
+ */
+function toggleApp(loggedIn, user) {
+  // Pastikan appContainer sudah diinisialisasi, jika belum panggil initializeDOMElements
+  if (loggedIn && !form) {
+    initializeDOMElements();
+  }
+
   if (loggedIn) {
-    // Inisialisasi DOM Elements saat app container muncul
-    if (!form) {
-      initializeDOMElements();
+    loginContainer.classList.add("hidden");
+
+    // Tentukan visibilitas tombol Rekening Pribadi
+    if (user && user.email === ADMIN_EMAIL) {
+      if (personalFinanceBtn) personalFinanceBtn.classList.remove("hidden");
+    } else {
+      if (personalFinanceBtn) personalFinanceBtn.classList.add("hidden");
     }
 
-    loginContainer.classList.add("hidden");
-    appContainer.classList.remove("hidden");
-
-    // Panggil resetForm() di sini untuk memperbaiki masalah input ikan berulang
-    window.resetForm();
+    // Panggil view default setelah login (DAKATA Main)
+    switchView("main");
   } else {
-    appContainer.classList.add("hidden");
+    // Logika saat LOGOUT
+    if (appContainer) appContainer.classList.add("hidden");
+    if (personalContainer) personalContainer.classList.add("hidden");
     loginContainer.classList.remove("hidden");
-    // Tambahkan hideLoading() jika Anda memiliki fungsi itu
-    // hideLoading();
+
+    // Sembunyikan semua tombol navigasi saat logout
+    if (personalFinanceBtn) personalFinanceBtn.classList.add("hidden");
+    if (dakattaHomeBtn) dakattaHomeBtn.classList.add("hidden");
+    hideLoading();
   }
 }
 
@@ -110,34 +159,49 @@ if (loginForm) {
 // Event Listener untuk Logout
 if (logoutBtn) {
   logoutBtn.addEventListener("click", async () => {
-    showLoading();
-    try {
-      await auth.signOut();
-      Swal.fire({
-        title: "Logout Berhasil",
-        text: "Anda telah keluar dari aplikasi.",
-        icon: "info",
-      });
-    } catch (error) {
-      console.error("Logout Error:", error);
-      Swal.fire({
-        title: "Gagal Logout",
-        text: "Terjadi kesalahan saat logout.",
-        icon: "error",
-      });
-    }
+    // Sinkronisasi tombol logout di halaman pribadi (jika ada)
+    const personalLogoutBtn = document.getElementById("logout-btn-personal");
+    if (personalLogoutBtn)
+      personalLogoutBtn.removeEventListener("click", handleLogout);
+
+    handleLogout();
   });
+}
+
+async function handleLogout() {
+  showLoading();
+  try {
+    await auth.signOut();
+    Swal.fire({
+      title: "Logout Berhasil",
+      text: "Anda telah keluar dari aplikasi.",
+      icon: "info",
+    });
+  } catch (error) {
+    console.error("Logout Error:", error);
+    Swal.fire({
+      title: "Gagal Logout",
+      text: "Terjadi kesalahan saat logout.",
+      icon: "error",
+    });
+  } finally {
+    hideLoading();
+  }
 }
 
 // PEMERIKSAAN STATUS OTENTIKASI (Paling Penting)
 auth.onAuthStateChanged((user) => {
   showLoading();
   if (user) {
-    toggleApp(true);
-    fetchTransactions();
+    // Teruskan objek 'user' ke toggleApp
+    toggleApp(true, user);
+    // Sinkronisasi tombol logout di halaman pribadi
+    const personalLogoutBtn = document.getElementById("logout-btn-personal");
+    if (personalLogoutBtn)
+      personalLogoutBtn.addEventListener("click", handleLogout);
   } else {
-    toggleApp(false);
-    hideLoading();
+    // Panggil toggleApp saat logout, user bernilai null
+    toggleApp(false, null);
   }
 });
 
@@ -161,7 +225,7 @@ function initializeDOMElements() {
     { id: "mix", name: "Mix (Tidak Spesifik)" },
   ];
 
-  // DOM Elements
+  // DOM Elements DAKATA (Bisnis)
   form = document.getElementById("transaction-form");
   tableBody = document.querySelector("#history-table tbody");
   totalBalanceEl = document.getElementById("total-balance");
@@ -171,15 +235,34 @@ function initializeDOMElements() {
   formTitle = document.getElementById("form-title");
   editModeControls = document.getElementById("edit-mode-controls");
 
-  // INISIALISASI DOM BARU
+  // INISIALISASI DOM BARU DAKATA (Filter, Search, Pagination)
   filterSelect = document.getElementById("transaction-filter");
   searchInput = document.getElementById("transaction-search");
-  prevPageBtn = document.getElementById("prev-page-btn");
-  nextPageBtn = document.getElementById("next-page-btn");
-  paginationInfo = document.getElementById("pagination-info");
+
+  // Ambil elemen pagination dari HTML
+  const paginationControls = document.getElementById("pagination-controls");
+  if (paginationControls) {
+    const buttons = paginationControls.querySelectorAll("button");
+    if (buttons.length >= 2) {
+      prevPageBtn = buttons[0];
+      nextPageBtn = buttons[1];
+    }
+    paginationInfo = paginationControls.querySelector("span"); // Asumsi span pertama adalah info
+  }
+
   exportCsvBtn = document.getElementById("export-csv-btn");
 
-  // Event Listeners yang tergantung pada DOM app-container
+  // INISIALISASI DOM BARU REKENING PRIBADI
+  personalFinanceBtn = document.getElementById("personalFinanceBtn"); // Tombol Navigasi ke Finance
+  personalContainer = document.getElementById("personal-container"); // Container Halaman Finance
+  personalForm = document.getElementById("personal-transaction-form"); // Form Finance
+  personalTransactionsList = document.getElementById(
+    "personal-transactions-list"
+  ); // List Transaksi Finance
+  dakattaHomeBtn = document.getElementById("dakattaHomeBtn"); // Tombol Navigasi ke DAKATA
+  personalBalanceContainer = document.getElementById("personal-balance"); // Saldo Pribadi Container
+
+  // Event Listeners DAKATA
   if (addFishBtn) addFishBtn.addEventListener("click", addFishInput);
   if (form) form.addEventListener("submit", handleFormSubmission);
   if (packageContainer) {
@@ -187,7 +270,7 @@ function initializeDOMElements() {
     packageContainer.addEventListener("click", handlePackageClick);
   }
 
-  // EVENT LISTENERS BARU UNTUK FILTER, SEARCH, PAGINATION, DAN EXPORT
+  // EVENT LISTENERS BARU UNTUK FILTER, SEARCH, PAGINATION, DAN EXPORT DAKATA
   if (filterSelect)
     filterSelect.addEventListener("change", () => {
       currentPage = 1;
@@ -214,6 +297,17 @@ function initializeDOMElements() {
       }
     });
   if (exportCsvBtn) exportCsvBtn.addEventListener("click", exportToCsv);
+
+  // EVENT LISTENERS BARU UNTUK REKENING PRIBADI
+  if (personalFinanceBtn)
+    personalFinanceBtn.addEventListener("click", () => switchView("personal"));
+  if (dakattaHomeBtn)
+    dakattaHomeBtn.addEventListener("click", () => switchView("main"));
+  if (personalForm)
+    personalForm.addEventListener("submit", handlePersonalSubmit);
+
+  // Reset form saat inisialisasi
+  resetForm();
 }
 
 // -----------------------------------------------------
@@ -250,7 +344,7 @@ function renderFishInputs(packageContent) {
       const otherValue = isOther ? item.type.substring(6) : "";
 
       const fishInputHTML = `
-                <div id="fish-row-${id}" class="flex space-x-2 items-end">
+                <div id="fish-row-${id}" class="flex space-x-2 items-end fish-package-item">
                     <div class="flex-grow">
                         <select id="select-${id}" class="fish-type shadow border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" required>
                             ${getFishOptionsHTML(selectedType)}
@@ -284,7 +378,7 @@ function addFishInput(initialType = "") {
 
   const id = Date.now() + Math.random();
   const fishInputHTML = `
-        <div id="fish-row-${id}" class="flex space-x-2 items-end">
+        <div id="fish-row-${id}" class="flex space-x-2 items-end fish-package-item">
             <div class="flex-grow">
                 <select id="select-${id}" class="fish-type shadow border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" required>
                     ${getFishOptionsHTML(initialType)}
@@ -302,13 +396,15 @@ function addFishInput(initialType = "") {
 }
 
 // -----------------------------------------------------
-// LOGIKA PENANGANAN INPUT & TOMBOL
+// LOGIKA PENANGANAN INPUT & TOMBOL (DAKATA)
 // -----------------------------------------------------
 
 function handlePackageChange(e) {
   if (e.target.classList.contains("fish-type")) {
     const selectEl = e.target;
-    const parentDiv = selectEl.parentElement;
+    const parentDiv = selectEl
+      .closest(".fish-package-item")
+      .querySelector(".flex-grow");
 
     let existingInput = parentDiv.querySelector(".other-input");
     if (existingInput) {
@@ -325,14 +421,18 @@ function handlePackageChange(e) {
 }
 
 function handlePackageClick(e) {
-  if (e.target.classList.contains("remove-fish-btn")) {
-    const rowId = e.target.dataset.rowId;
+  if (
+    e.target.classList.contains("remove-fish-btn") ||
+    e.target.closest(".remove-fish-btn")
+  ) {
+    const btn = e.target.closest(".remove-fish-btn");
+    const rowId = btn.dataset.rowId;
     document.getElementById(`fish-row-${rowId}`).remove();
   }
 }
 
 // -----------------------------------------------------
-// LOGIKA CRUD: DELETE
+// LOGIKA CRUD: DELETE (DAKATA)
 // -----------------------------------------------------
 window.deleteTransaction = async function (id) {
   const result = await Swal.fire({
@@ -370,7 +470,7 @@ window.deleteTransaction = async function (id) {
 };
 
 // -----------------------------------------------------
-// LOGIKA PEMBUATAN NOTA/INVOICE
+// LOGIKA PEMBUATAN NOTA/INVOICE (DAKATA)
 // -----------------------------------------------------
 window.generateInvoice = async function (id) {
   showLoading();
@@ -430,7 +530,7 @@ window.generateInvoice = async function (id) {
             `;
     });
 
-    // 2. Template HTML untuk Invoice
+    // 2. Template HTML untuk Invoice (Sisanya sama persis dari kode yang Anda berikan)
     const invoiceHTML = `
             <html>
             <head>
@@ -621,7 +721,7 @@ window.generateInvoice = async function (id) {
 };
 
 // -----------------------------------------------------
-// LOGIKA CRUD: EDIT / SETUP EDIT MODE
+// LOGIKA CRUD: EDIT / SETUP EDIT MODE (DAKATA)
 // -----------------------------------------------------
 window.editTransaction = async function (id) {
   if (!auth.currentUser) return;
@@ -673,7 +773,7 @@ window.editTransaction = async function (id) {
 };
 
 // -----------------------------------------------------
-// LOGIKA RESET FORM
+// LOGIKA RESET FORM (DAKATA)
 // -----------------------------------------------------
 window.resetForm = function () {
   isEditMode = false;
@@ -693,7 +793,7 @@ window.resetForm = function () {
 };
 
 // =====================================================
-// FUNGSI FETCH, FILTER, PAGINATION, DAN SALDO
+// FUNGSI FETCH, FILTER, PAGINATION, DAN SALDO (DAKATA)
 // =====================================================
 
 // -----------------------------------------------------
@@ -726,7 +826,7 @@ async function fetchTransactions() {
       });
     }
   } finally {
-    hideLoading();
+    // hideLoading() dipindahkan ke applyFiltersAndPagination untuk memastikan loading hilang setelah rendering
   }
 }
 
@@ -741,7 +841,8 @@ function applyFiltersAndPagination() {
     if (paginationInfo) paginationInfo.textContent = "0 data";
     if (prevPageBtn) prevPageBtn.disabled = true;
     if (nextPageBtn) nextPageBtn.disabled = true;
-    if (totalBalanceEl) totalBalanceEl.textContent = "IDR 0"; // Reset saldo
+    if (totalBalanceEl) totalBalanceEl.textContent = formatRupiah(0); // Reset saldo
+    hideLoading();
     return;
   }
 
@@ -792,15 +893,17 @@ function applyFiltersAndPagination() {
   let totalBalance = 0;
   allTransactions.forEach((tx) => {
     const packagePrice = tx.packagePrice || 0;
+    // Asumsi: packagePrice adalah nilai yang mempengaruhi saldo (Masuk saat Sale, Keluar saat Purchase)
     if (tx.type === "sale") {
       totalBalance += packagePrice;
     } else {
       totalBalance -= packagePrice;
     }
+    // Biaya kirim (shippingCost) biasanya diabaikan dalam perhitungan saldo inti jika dianggap biaya operasional
   });
 
   if (totalBalanceEl) {
-    totalBalanceEl.textContent = `IDR ${totalBalance.toLocaleString("id-ID")}`;
+    totalBalanceEl.textContent = formatRupiah(totalBalance);
     totalBalanceEl.classList.remove(
       "text-blue-600",
       "text-green-600",
@@ -843,6 +946,7 @@ function applyFiltersAndPagination() {
     transactionsToDisplay.forEach((tx, index) => {
       const packagePrice = tx.packagePrice || 0;
       const shippingCost = tx.shippingCost || 0;
+      // Perhitungan Total Nilai Transaksi (Harga Paket + Ongkir)
       const totalTransactionValue = packagePrice + shippingCost;
       const packageContent = tx.packageContent || [];
 
@@ -886,11 +990,11 @@ function applyFiltersAndPagination() {
                     } 
                 </td>
                 <td class="py-3 px-6 whitespace-nowrap font-bold">
-                    Paket: IDR ${packagePrice.toLocaleString("id-ID")} <br>
-                    Ongkir: IDR ${shippingCost.toLocaleString("id-ID")} <br>
+                    Paket: ${formatRupiah(packagePrice)} <br>
+                    Ongkir: ${formatRupiah(shippingCost)} <br>
                     <hr class="my-1 border-gray-300">
-                    <span class="${typeClass}">TOTAL: IDR ${totalTransactionValue.toLocaleString(
-        "id-ID"
+                    <span class="${typeClass}">TOTAL: ${formatRupiah(
+        totalTransactionValue
       )}</span>
                 </td>
                 <td class="py-3 px-6 text-center whitespace-nowrap">
@@ -920,18 +1024,23 @@ function applyFiltersAndPagination() {
   // 5. UPDATE KONTROL PAGINATION
   if (paginationInfo) {
     const totalFiltered = filteredTransactions.length;
+    const totalPages = Math.ceil(totalFiltered / rowsPerPage);
     const displayStart = totalFiltered > 0 ? start + 1 : 0;
     const displayEnd = Math.min(end, totalFiltered);
-    paginationInfo.textContent = `Menampilkan ${displayStart} sampai ${displayEnd} dari ${totalFiltered} data`;
+
+    // Sesuaikan format sesuai HTML
+    paginationInfo.innerHTML = `Menampilkan ${displayStart} sampai ${displayEnd} dari ${totalFiltered} data`;
   }
 
   if (prevPageBtn) prevPageBtn.disabled = currentPage === 1;
   if (nextPageBtn)
     nextPageBtn.disabled = currentPage === totalPages || totalPages === 0;
+
+  hideLoading();
 }
 
 // -----------------------------------------------------
-// FUNGSI EXPORT DATA KE CSV
+// FUNGSI EXPORT DATA KE CSV (DAKATA)
 // -----------------------------------------------------
 
 function exportToCsv() {
@@ -1035,7 +1144,7 @@ function exportToCsv() {
 }
 
 // -----------------------------------------------------
-// Event Handler Form Submission (DILENGKAPI)
+// Event Handler Form Submission (DAKATA)
 // -----------------------------------------------------
 async function handleFormSubmission(e) {
   e.preventDefault();
@@ -1058,7 +1167,9 @@ async function handleFormSubmission(e) {
   const destination = document.getElementById("destination").value.trim();
   const clientName = document.getElementById("client_name").value.trim();
 
-  const fishRows = Array.from(packageContainer.children);
+  const fishRows = Array.from(
+    packageContainer.querySelectorAll(".fish-package-item")
+  );
   const packageContent = [];
 
   for (const row of fishRows) {
@@ -1157,6 +1268,319 @@ async function handleFormSubmission(e) {
       icon: "error",
     });
   } finally {
+    // hideLoading() dipanggil di fetchTransactions()
+  }
+}
+
+// =========================================================
+// LOGIKA REKENING PRIBADI (BARU DAN TERINTEGRASI)
+// =========================================================
+
+/**
+ * Fungsi untuk mengganti tampilan antara DAKATA Main dan Rekening Pribadi
+ * @param {'main' | 'personal'} viewName - Nama tampilan yang akan diaktifkan
+ */
+function switchView(viewName) {
+  showLoading();
+
+  // Pastikan DOM Elements sudah terinisialisasi
+  if (!form) initializeDOMElements();
+
+  // Atur tampilan container
+  if (viewName === "main") {
+    appContainer.classList.remove("hidden");
+    if (personalContainer) personalContainer.classList.add("hidden");
+
+    // Atur tombol navigasi
+    if (dakattaHomeBtn) dakattaHomeBtn.classList.add("hidden");
+    if (
+      auth.currentUser &&
+      auth.currentUser.email === ADMIN_EMAIL &&
+      personalFinanceBtn
+    ) {
+      personalFinanceBtn.classList.remove("hidden");
+    }
+
+    fetchTransactions(); // Muat data DAKATA
+  } else if (viewName === "personal") {
+    appContainer.classList.add("hidden");
+    if (personalContainer) personalContainer.classList.remove("hidden");
+
+    // Atur tombol navigasi
+    if (dakattaHomeBtn) dakattaHomeBtn.classList.remove("hidden");
+    if (personalFinanceBtn) personalFinanceBtn.classList.add("hidden");
+
+    fetchAndRenderPersonalTransactions(); // Muat data pribadi
+  } else {
+    hideLoading(); // Safety net
+  }
+}
+
+/**
+ * Logika submit form transaksi pribadi
+ */
+async function handlePersonalSubmit(e) {
+  e.preventDefault();
+
+  const type = document.getElementById("personalType").value;
+  const valueInput = document.getElementById("personalValue");
+  const note = document.getElementById("personalNote").value;
+
+  const value = parseInt(valueInput.value);
+  const user = auth.currentUser;
+
+  // Validasi
+  if (!user) {
+    Swal.fire("Akses Ditolak", "Anda harus login.", "error");
+    return;
+  }
+  if (!value || value <= 0 || isNaN(value) || !note.trim()) {
+    Swal.fire("Error", "Nilai dan Catatan harus diisi dengan benar.", "error");
+    return;
+  }
+
+  showLoading();
+
+  try {
+    await personalTransactionsCollection.add({
+      userId: user.uid,
+      type: type, // MASUK atau KELUAR
+      value: value,
+      note: note.trim(),
+      timestamp: firebase.firestore.FieldValue.serverTimestamp(),
+    });
+
+    personalForm.reset();
+    Swal.fire("Berhasil", "Transaksi pribadi berhasil dicatat!", "success");
+    fetchAndRenderPersonalTransactions(); // Refresh list
+  } catch (error) {
+    console.error("Error mencatat transaksi pribadi:", error);
+    Swal.fire("Gagal", "Gagal mencatat transaksi pribadi.", "error");
+  } finally {
+    // hideLoading() dipanggil di fetchAndRenderPersonalTransactions
+  }
+}
+
+/**
+ * Mengambil dan merender data transaksi pribadi dari Firebase
+ */
+async function fetchAndRenderPersonalTransactions() {
+  const user = auth.currentUser;
+  if (!user || !personalTransactionsList) return;
+
+  showLoading();
+
+  try {
+    const snapshot = await personalTransactionsCollection
+      .where("userId", "==", user.uid)
+      .orderBy("timestamp", "desc")
+      .get();
+
+    personalTransactionsList.innerHTML = "";
+
+    let personalBalance = 0;
+    let listHTML = "";
+
+    snapshot.forEach((doc) => {
+      const data = doc.data();
+      const id = doc.id; // Ambil ID dokumen
+
+      // Hitung saldo
+      if (data.type === "MASUK") {
+        personalBalance += data.value;
+      } else {
+        personalBalance -= data.value;
+      }
+
+      const typeClass =
+        data.type === "MASUK" ? "text-green-600" : "text-red-600";
+      const bgColor = data.type === "MASUK" ? "bg-green-50" : "bg-red-50";
+
+      const dateToDisplay =
+        data.timestamp && typeof data.timestamp.toDate === "function"
+          ? new Date(data.timestamp.toDate()).toLocaleString("id-ID")
+          : "N/A";
+
+      listHTML += `
+                <div class="p-4 rounded-lg shadow-sm mb-3 ${bgColor} border-l-4 border-gray-300">
+                    <div class="flex justify-between items-start pb-2 mb-2 border-b border-gray-200">
+                        <div>
+                            <p class="font-bold text-lg ${typeClass}">
+                                <i class="fas ${
+                                  data.type === "MASUK"
+                                    ? "fa-arrow-circle-up"
+                                    : "fa-arrow-circle-down"
+                                } mr-2"></i>
+                                ${data.type}
+                            </p>
+                            <p class="text-xl font-extrabold text-gray-800">${formatRupiah(
+                              data.value
+                            )}</p>
+                        </div>
+                        <div class="flex space-x-2">
+                            <button onclick="editPersonalTransaction('${id}')" 
+                                class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-1 px-3 rounded text-xs focus:outline-none focus:shadow-outline">
+                                <i class="fas fa-edit"></i> Edit
+                            </button>
+                            <button onclick="deletePersonalTransaction('${id}')" 
+                                class="bg-red-500 hover:bg-red-600 text-white font-bold py-1 px-3 rounded text-xs focus:outline-none focus:shadow-outline">
+                                <i class="fas fa-trash"></i> Hapus
+                            </button>
+                        </div>
+                    </div>
+                    <p class="text-sm mt-1 text-gray-700">Catatan: ${
+                      data.note
+                    }</p>
+                    <p class="text-xs text-gray-400 mt-1">Waktu: ${dateToDisplay}</p>
+                    <p class="text-xs text-gray-400">ID: ${id.substring(
+                      0,
+                      8
+                    )}...</p>
+                </div>
+            `;
+    });
+
+    // Render List Transaksi
+    personalTransactionsList.innerHTML = listHTML;
+
+    // Update Saldo Pribadi
+    if (personalBalanceContainer) {
+      const balanceClass =
+        personalBalance >= 0 ? "text-green-500" : "text-red-500";
+
+      personalBalanceContainer.innerHTML = `
+                <p class="mb-2 md:mb-0 w-full text-center">
+                    Total Saldo:
+                    <span
+                        class="font-bold text-4xl block mt-2 ${balanceClass}"
+                        >
+                        ${formatRupiah(personalBalance)}
+                    </span>
+                </p>
+            `;
+    }
+
+    if (snapshot.empty) {
+      personalTransactionsList.innerHTML =
+        '<p class="text-center text-gray-500 p-8">Belum ada transaksi pribadi yang tercatat.</p>';
+    }
+  } catch (error) {
+    console.error("Error fetching personal transactions:", error);
+    personalTransactionsList.innerHTML =
+      '<p class="text-center text-red-500 p-8">Gagal memuat data pribadi. Cek koneksi Anda. (Perlu Indeks Firestore: userId, timestamp)</p>';
+  } finally {
     hideLoading();
   }
 }
+
+// -----------------------------------------------------
+// LOGIKA CRUD: DELETE (REKENING PRIBADI)
+// -----------------------------------------------------
+window.deletePersonalTransaction = async function (id) {
+  const result = await Swal.fire({
+    title: "Konfirmasi Hapus",
+    text: "Apakah Anda yakin ingin menghapus catatan pribadi ini?",
+    icon: "warning",
+    showCancelButton: true,
+    confirmButtonColor: "#d33",
+    cancelButtonColor: "#3085d6",
+    confirmButtonText: "Ya, Hapus!",
+    cancelButtonText: "Batal",
+  });
+
+  if (!result.isConfirmed) return;
+
+  showLoading();
+
+  try {
+    await personalTransactionsCollection.doc(id).delete();
+    Swal.fire({
+      title: "Dihapus!",
+      text: "Catatan pribadi berhasil dihapus.",
+      icon: "success",
+    });
+    fetchAndRenderPersonalTransactions(); // Refresh list
+  } catch (error) {
+    console.error("Error removing personal document: ", error);
+    Swal.fire({
+      title: "Gagal!",
+      text: "Gagal menghapus catatan pribadi.",
+      icon: "error",
+    });
+    hideLoading();
+  }
+};
+
+// -----------------------------------------------------
+// LOGIKA CRUD: EDIT (REKENING PRIBADI)
+// -----------------------------------------------------
+window.editPersonalTransaction = async function (id) {
+  showLoading();
+  let tx;
+  try {
+    const doc = await personalTransactionsCollection.doc(id).get();
+    if (!doc.exists) {
+      Swal.fire("Error", "Transaksi tidak ditemukan.", "error");
+      return;
+    }
+    tx = doc.data();
+  } catch (error) {
+    console.error("Error fetching personal document for edit: ", error);
+    Swal.fire("Error", "Gagal memuat data untuk diedit.", "error");
+    return;
+  } finally {
+    hideLoading();
+  }
+
+  // Tampilkan form edit menggunakan SweetAlert2
+  const { value: formValues } = await Swal.fire({
+    title: "Edit Transaksi Pribadi",
+    html:
+      `<select id="swal-type" class="swal2-input">
+                <option value="MASUK" ${
+                  tx.type === "MASUK" ? "selected" : ""
+                }>Pemasukan (MASUK)</option>
+                <option value="KELUAR" ${
+                  tx.type === "KELUAR" ? "selected" : ""
+                }>Pengeluaran (KELUAR)</option>
+            </select>` +
+      `<input id="swal-value" type="number" min="1" placeholder="Nilai (IDR)" value="${tx.value}" class="swal2-input">` +
+      `<input id="swal-note" type="text" placeholder="Catatan/Keterangan" value="${tx.note}" class="swal2-input">`,
+    focusConfirm: false,
+    showCancelButton: true,
+    confirmButtonText: "Simpan Perubahan",
+    preConfirm: () => {
+      const type = document.getElementById("swal-type").value;
+      const value = parseInt(document.getElementById("swal-value").value);
+      const note = document.getElementById("swal-note").value.trim();
+
+      if (!type || isNaN(value) || value <= 0 || !note) {
+        Swal.showValidationMessage(
+          `Harap lengkapi semua bidang dengan nilai yang benar.`
+        );
+        return false;
+      }
+      return { type, value, note };
+    },
+  });
+
+  if (formValues) {
+    showLoading();
+    try {
+      // Hapus timestamp karena kita tidak ingin mengubah waktu catatan
+      delete formValues.timestamp;
+      await personalTransactionsCollection.doc(id).update(formValues);
+      Swal.fire(
+        "Berhasil!",
+        "Transaksi pribadi berhasil diperbarui.",
+        "success"
+      );
+      fetchAndRenderPersonalTransactions();
+    } catch (error) {
+      console.error("Error updating personal transaction: ", error);
+      Swal.fire("Gagal!", `Gagal memperbarui: ${error.message}`, "error");
+    } finally {
+      hideLoading();
+    }
+  }
+};

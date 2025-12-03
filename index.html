@@ -176,12 +176,21 @@
               Input Transaksi Baru
             </h2>
 
-            <button
-              id="logout-btn"
-              class="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded transition duration-150 text-sm"
-            >
-              Logout
-            </button>
+            <div class="flex space-x-3">
+              <button
+                id="personalFinanceBtn"
+                class="px-4 py-2 rounded text-white bg-indigo-600 hover:bg-indigo-700 dark:bg-indigo-600 dark:hover:bg-indigo-700 transition duration-300 hidden font-bold text-sm"
+              >
+                Rekening
+              </button>
+
+              <button
+                id="logout-btn"
+                class="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded transition duration-150 text-sm"
+              >
+                Logout
+              </button>
+            </div>
           </div>
           <div
             id="edit-mode-controls"
@@ -406,7 +415,150 @@
       </div>
     </div>
 
+    <div id="personal-container" class="hidden">
+      <div class="container mx-auto p-4 md:p-8">
+        <header
+          class="bg-gray-800 p-6 rounded-lg shadow-lg mb-8 relative overflow-hidden"
+          style="
+            color: #f9fafb; /* text-gray-50 */
+            background-color: #1f2937;
+            min-height: 150px;
+          "
+        >
+          <div class="h-full flex flex-col justify-center items-center">
+            <div class="flex items-center space-x-4 text-center">
+              <i class="fas fa-wallet text-yellow-400 text-5xl"></i>
+              <h1 class="text-3xl font-bold text-yellow-400">
+                Manajemen Rekening Pribadi
+              </h1>
+            </div>
+          </div>
+        </header>
+
+        <section class="bg-white p-6 rounded-lg shadow-lg mb-8">
+          <h2 class="text-2xl font-semibold mb-4 text-gray-800 text-center">
+            Ringkasan Saldo Pribadi
+          </h2>
+          <div
+            class="flex flex-col md:flex-row justify-around items-center text-xl font-medium"
+          >
+            <div id="personal-balance" class="mb-2 md:mb-0 w-full text-center">
+              <p>
+                Total Saldo:
+                <span class="text-red-600 font-bold text-4xl block mt-2"
+                  >IDR 0</span
+                >
+              </p>
+            </div>
+          </div>
+        </section>
+
+        <section class="bg-white p-6 rounded-lg shadow-lg mb-8">
+          <div class="flex justify-between items-center mb-4">
+            <h2 class="text-2xl font-semibold text-gray-800">
+              Input Transaksi Pribadi
+            </h2>
+            <div class="flex space-x-3">
+              <button
+                id="dakattaHomeBtn"
+                class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded transition duration-150 text-sm"
+              >
+                <i class="fas fa-home mr-1"></i> Ke DAKATA Aquatic
+              </button>
+              <button
+                id="logout-btn-personal"
+                class="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded transition duration-150 text-sm"
+              >
+                Logout
+              </button>
+            </div>
+          </div>
+
+          <form
+            id="personal-transaction-form"
+            class="grid grid-cols-1 md:grid-cols-3 gap-4"
+          >
+            <div>
+              <label
+                for="personalType"
+                class="block text-gray-700 text-sm font-bold mb-2"
+                >Jenis Transaksi:</label
+              >
+              <select
+                id="personalType"
+                class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+                required
+              >
+                <option value="MASUK">Pemasukan (MASUK)</option>
+                <option value="KELUAR">Pengeluaran (KELUAR)</option>
+              </select>
+            </div>
+
+            <div class="md:col-span-2">
+              <label
+                for="personalValue"
+                class="block text-gray-700 text-sm font-bold mb-2"
+                >Nilai (IDR):</label
+              >
+              <input
+                type="number"
+                id="personalValue"
+                class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+                min="1"
+                placeholder="Cth: 50000"
+                required
+              />
+            </div>
+
+            <div class="md:col-span-3">
+              <label
+                for="personalNote"
+                class="block text-gray-700 text-sm font-bold mb-2"
+                >Catatan/Keterangan:</label
+              >
+              <input
+                type="text"
+                id="personalNote"
+                class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+                placeholder="Cth: Ambil gaji, Beli kebutuhan bulanan"
+                required
+              />
+            </div>
+
+            <div class="md:col-span-3 mt-4">
+              <button
+                type="submit"
+                class="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline w-full"
+              >
+                Catat Transaksi Pribadi
+              </button>
+            </div>
+          </form>
+        </section>
+
+        <section class="bg-white p-6 rounded-lg shadow-lg">
+          <h2 class="text-2xl font-semibold text-gray-800 mb-4">
+            Riwayat Transaksi Pribadi
+          </h2>
+
+          <div id="personal-transactions-list" class="space-y-3">
+            <p class="text-center text-gray-500 p-8">Memuat data pribadi...</p>
+          </div>
+        </section>
+      </div>
+    </div>
+
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <script src="script.js"></script>
+    <script>
+      // Sinkronisasi tombol logout di halaman pribadi dengan tombol logout utama
+      const logoutBtnPersonal = document.getElementById("logout-btn-personal");
+      if (logoutBtnPersonal && document.getElementById("logout-btn")) {
+        logoutBtnPersonal.addEventListener("click", () => {
+          // Memicu klik pada tombol logout utama untuk memastikan logout Firebase berjalan
+          document.getElementById("logout-btn").click();
+        });
+      }
+    </script>
   </body>
 </html>
