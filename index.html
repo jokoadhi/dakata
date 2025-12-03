@@ -12,6 +12,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@3.7.1/dist/chart.min.js"></script>
     <link
       rel="stylesheet"
       href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css"
@@ -320,6 +321,46 @@
             </div>
           </form>
         </section>
+
+        <div
+          id="chart-container"
+          class="bg-white p-6 rounded-xl shadow-lg mb-6"
+        >
+          <h2 class="text-xl font-bold text-gray-800 mb-4">
+            📈 Ringkasan Transaksi Bulanan
+          </h2>
+          <div class="flex flex-col md:flex-row md:space-x-4 mb-4">
+            <div class="flex-grow mb-3 md:mb-0">
+              <label
+                for="chart-year-filter"
+                class="block text-sm font-medium text-gray-700"
+                >Pilih Tahun:</label
+              >
+              <select
+                id="chart-year-filter"
+                class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md shadow-sm"
+              ></select>
+            </div>
+            <div class="flex-grow">
+              <label
+                for="chart-type-select"
+                class="block text-sm font-medium text-gray-700"
+                >Tipe Grafik:</label
+              >
+              <select
+                id="chart-type-select"
+                class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md shadow-sm"
+              >
+                <option value="bar">Bar (Batang)</option>
+                <option value="line">Line (Garis)</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="h-80 w-full">
+            <canvas id="transactionChart"></canvas>
+          </div>
+        </div>
 
         <section class="bg-white p-6 rounded-lg shadow-lg">
           <div
