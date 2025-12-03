@@ -4,12 +4,13 @@
 //          diinisialisasi di index.html
 // =====================================================
 
-// DOM Elements terkait Auth
+// DOM Elements terkait Auth & Loading
 const loginContainer = document.getElementById("login-container");
 const appContainer = document.getElementById("app-container");
 const loginForm = document.getElementById("login-form");
 const logoutBtn = document.getElementById("logout-btn");
 const loginErrorEl = document.getElementById("login-error");
+const loadingOverlay = document.getElementById("loading-overlay");
 
 // Variabel Global
 let FISH_VARIETIES = [];
@@ -22,9 +23,32 @@ let form,
   formTitle,
   editModeControls;
 
+// VARIABEL BARU UNTUK FILTER, SEARCH, PAGINATION, dan EXPORT
+let allTransactions = []; // Menyimpan semua data transaksi
+let filteredTransactions = []; // Menyimpan data setelah difilter/search
+let currentPage = 1;
+const rowsPerPage = 10;
+let filterSelect,
+  searchInput,
+  prevPageBtn,
+  nextPageBtn,
+  paginationInfo,
+  exportCsvBtn;
+
 // Variabel untuk Mode Edit
 let isEditMode = false;
 let currentEditId = null;
+
+// ==========================================================
+// FUNGSI PENGATUR LOADING
+// ==========================================================
+function showLoading() {
+  if (loadingOverlay) loadingOverlay.classList.remove("hidden");
+}
+
+function hideLoading() {
+  if (loadingOverlay) loadingOverlay.classList.add("hidden");
+}
 
 // -----------------------------------------------------
 // FUNGSI AUTH DAN TOGGLE APLIKASI
@@ -40,12 +64,11 @@ function toggleApp(loggedIn) {
     loginContainer.classList.add("hidden");
     appContainer.classList.remove("hidden");
 
-    // Panggil fungsi inisial setelah user yakin login
     addFishInput();
-    fetchAndRenderTransactions();
   } else {
     appContainer.classList.add("hidden");
     loginContainer.classList.remove("hidden");
+    hideLoading();
   }
 }
 
@@ -57,6 +80,8 @@ if (loginForm) {
     const password = document.getElementById("login-password").value;
 
     if (loginErrorEl) loginErrorEl.classList.add("hidden");
+
+    showLoading();
 
     try {
       await auth.signInWithEmailAndPassword(email, password);
@@ -74,6 +99,8 @@ if (loginForm) {
         text: "Cek Email dan Password Anda.",
         icon: "error",
       });
+    } finally {
+      hideLoading();
     }
   });
 }
@@ -81,6 +108,7 @@ if (loginForm) {
 // Event Listener untuk Logout
 if (logoutBtn) {
   logoutBtn.addEventListener("click", async () => {
+    showLoading();
     try {
       await auth.signOut();
       Swal.fire({
@@ -90,21 +118,29 @@ if (logoutBtn) {
       });
     } catch (error) {
       console.error("Logout Error:", error);
+      Swal.fire({
+        title: "Gagal Logout",
+        text: "Terjadi kesalahan saat logout.",
+        icon: "error",
+      });
     }
   });
 }
 
 // PEMERIKSAAN STATUS OTENTIKASI (Paling Penting)
 auth.onAuthStateChanged((user) => {
+  showLoading();
   if (user) {
     toggleApp(true);
+    fetchTransactions();
   } else {
     toggleApp(false);
+    hideLoading();
   }
 });
 
 // =====================================================
-// DOM INITIALIZATION (Dipanggil setelah Login Berhasil)
+// DOM INITIALIZATION
 // =====================================================
 
 function initializeDOMElements() {
@@ -133,6 +169,14 @@ function initializeDOMElements() {
   formTitle = document.getElementById("form-title");
   editModeControls = document.getElementById("edit-mode-controls");
 
+  // INISIALISASI DOM BARU
+  filterSelect = document.getElementById("transaction-filter");
+  searchInput = document.getElementById("transaction-search");
+  prevPageBtn = document.getElementById("prev-page-btn");
+  nextPageBtn = document.getElementById("next-page-btn");
+  paginationInfo = document.getElementById("pagination-info");
+  exportCsvBtn = document.getElementById("export-csv-btn");
+
   // Event Listeners yang tergantung pada DOM app-container
   if (addFishBtn) addFishBtn.addEventListener("click", addFishInput);
   if (form) form.addEventListener("submit", handleFormSubmission);
@@ -140,10 +184,38 @@ function initializeDOMElements() {
     packageContainer.addEventListener("change", handlePackageChange);
     packageContainer.addEventListener("click", handlePackageClick);
   }
+
+  // EVENT LISTENERS BARU UNTUK FILTER, SEARCH, PAGINATION, DAN EXPORT
+  if (filterSelect)
+    filterSelect.addEventListener("change", () => {
+      currentPage = 1;
+      applyFiltersAndPagination();
+    });
+  if (searchInput)
+    searchInput.addEventListener("input", () => {
+      currentPage = 1;
+      applyFiltersAndPagination();
+    });
+  if (prevPageBtn)
+    prevPageBtn.addEventListener("click", () => {
+      if (currentPage > 1) {
+        currentPage--;
+        applyFiltersAndPagination();
+      }
+    });
+  if (nextPageBtn)
+    nextPageBtn.addEventListener("click", () => {
+      const totalPages = Math.ceil(filteredTransactions.length / rowsPerPage);
+      if (currentPage < totalPages) {
+        currentPage++;
+        applyFiltersAndPagination();
+      }
+    });
+  if (exportCsvBtn) exportCsvBtn.addEventListener("click", exportToCsv);
 }
 
 // -----------------------------------------------------
-// FUNGSI UTILITY (FISH INPUT)
+// FUNGSI UTILITY (FISH INPUT, ETC.)
 // -----------------------------------------------------
 
 function getFishOptionsHTML(selectedValue = "") {
@@ -261,7 +333,6 @@ function handlePackageClick(e) {
 // LOGIKA CRUD: DELETE
 // -----------------------------------------------------
 window.deleteTransaction = async function (id) {
-  // ... (Logika delete sama seperti sebelumnya) ...
   const result = await Swal.fire({
     title: "Konfirmasi Hapus",
     text: "Apakah Anda yakin ingin menghapus transaksi ini secara permanen?",
@@ -275,6 +346,8 @@ window.deleteTransaction = async function (id) {
 
   if (!result.isConfirmed) return;
 
+  showLoading();
+
   try {
     await transactionsCollection.doc(id).delete();
     Swal.fire({
@@ -282,7 +355,7 @@ window.deleteTransaction = async function (id) {
       text: "Transaksi berhasil dihapus.",
       icon: "success",
     });
-    fetchAndRenderTransactions();
+    fetchTransactions();
   } catch (error) {
     console.error("Error removing document: ", error);
     Swal.fire({
@@ -290,14 +363,15 @@ window.deleteTransaction = async function (id) {
       text: "Gagal menghapus transaksi.",
       icon: "error",
     });
+    hideLoading();
   }
 };
 
 // -----------------------------------------------------
-// LOGIKA PEMBUATAN NOTA/INVOICE (DENGAN PERBAIKAN WATERMARK)
+// LOGIKA PEMBUATAN NOTA/INVOICE
 // -----------------------------------------------------
 window.generateInvoice = async function (id) {
-  // ... (Logika generateInvoice sama seperti sebelumnya) ...
+  showLoading();
   try {
     const doc = await transactionsCollection.doc(id).get();
     if (!doc.exists) {
@@ -318,10 +392,8 @@ window.generateInvoice = async function (id) {
     const shippingCost = tx.shippingCost || 0;
     const totalAmount = packagePrice + shippingCost;
 
-    // --- PATH LOGO LOKAL ---
     const SHOP_NAME = "DAKATA Aquatic";
-    const LOGO_PATH = "./logo.png";
-    // -----------------------
+    const LOGO_PATH = "logo.png";
 
     let dateToDisplay = new Date().toLocaleDateString("id-ID", {
       day: "2-digit",
@@ -356,7 +428,7 @@ window.generateInvoice = async function (id) {
             `;
     });
 
-    // 2. Template HTML untuk Invoice (Watermark Disesuaikan & Z-index -1)
+    // 2. Template HTML untuk Invoice
     const invoiceHTML = `
             <html>
             <head>
@@ -383,7 +455,7 @@ window.generateInvoice = async function (id) {
                         pointer-events: none;
                     }
                     .watermark img {
-                        width: 600px; /* Diperbesar menjadi 400px */
+                        width: 600px; 
                         height: auto;
                     }
                     /* Header Style */
@@ -402,7 +474,7 @@ window.generateInvoice = async function (id) {
                     }
                     /* Logo Kecil di Header */
                     .header img {
-                        width: 70px; /* Diperbesar sedikit di header */
+                        width: 70px; 
                         height: 70px;
                     }
                     .header-info {
@@ -541,6 +613,8 @@ window.generateInvoice = async function (id) {
       text: "Gagal membuat nota. Periksa data transaksi atau koneksi Anda.",
       icon: "error",
     });
+  } finally {
+    hideLoading();
   }
 };
 
@@ -548,8 +622,9 @@ window.generateInvoice = async function (id) {
 // LOGIKA CRUD: EDIT / SETUP EDIT MODE
 // -----------------------------------------------------
 window.editTransaction = async function (id) {
-  // ... (Logika editTransaction sama seperti sebelumnya) ...
-  if (!auth.currentUser) return; // Lindungi dari akses tanpa login
+  if (!auth.currentUser) return;
+
+  showLoading();
 
   try {
     const doc = await transactionsCollection.doc(id).get();
@@ -590,6 +665,8 @@ window.editTransaction = async function (id) {
       text: "Gagal memuat data transaksi untuk diedit.",
       icon: "error",
     });
+  } finally {
+    hideLoading();
   }
 };
 
@@ -597,7 +674,6 @@ window.editTransaction = async function (id) {
 // LOGIKA RESET FORM
 // -----------------------------------------------------
 window.resetForm = function () {
-  // ... (Logika resetForm sama seperti sebelumnya) ...
   isEditMode = false;
   currentEditId = null;
   if (form) form.reset();
@@ -614,138 +690,32 @@ window.resetForm = function () {
   addFishInput();
 };
 
-// -----------------------------------------------------
-// Fungsi Render Tampilan & Perhitungan Saldo
-// -----------------------------------------------------
+// =====================================================
+// FUNGSI FETCH, FILTER, PAGINATION, DAN SALDO
+// =====================================================
 
-async function fetchAndRenderTransactions() {
-  // ... (Logika fetchAndRenderTransactions sama seperti sebelumnya) ...
-  if (!auth.currentUser) return; // Lindungi dari akses tanpa login
+// -----------------------------------------------------
+// 1. Fungsi Mengambil Data Transaksi dari Firebase (Fetch)
+// -----------------------------------------------------
+async function fetchTransactions() {
+  if (!auth.currentUser) return;
+  showLoading();
 
   try {
     const snapshot = await transactionsCollection
       .orderBy("timestamp", "desc")
       .get();
-    const transactions = snapshot.docs.map((doc) => ({
+
+    // Simpan semua data transaksi ke variabel global
+    allTransactions = snapshot.docs.map((doc) => ({
       id: doc.id,
       ...doc.data(),
     }));
 
-    if (tableBody) tableBody.innerHTML = "";
-    let totalBalance = 0;
-
-    transactions.forEach((tx, index) => {
-      const packagePrice = tx.packagePrice || 0;
-      const shippingCost = tx.shippingCost || 0;
-
-      // SALDO HANYA DARI HARGA PAKET
-      if (tx.type === "sale") {
-        totalBalance += packagePrice;
-      } else {
-        totalBalance -= packagePrice;
-      }
-
-      const totalTransactionValue = packagePrice + shippingCost;
-
-      const packageContent = tx.packageContent || [];
-
-      const fishDetails = packageContent
-        .map((item) => {
-          let itemName = item.type;
-
-          if (itemName.startsWith("other:")) {
-            itemName = item.type.substring(6);
-          } else {
-            itemName =
-              FISH_VARIETIES.find((f) => f.id === item.type)?.name || item.type;
-          }
-
-          return `${item.count}x ${itemName}`;
-        })
-        .join(", ");
-
-      let dateToDisplay = "N/A";
-      if (tx.timestamp && typeof tx.timestamp.toDate === "function") {
-        dateToDisplay = new Date(tx.timestamp.toDate()).toLocaleString();
-      } else if (tx.timestamp) {
-        dateToDisplay = new Date(tx.timestamp).toLocaleString();
-      }
-
-      if (tableBody) {
-        const row = tableBody.insertRow();
-        const typeClass =
-          tx.type === "sale" ? "text-green-600" : "text-red-600";
-
-        row.innerHTML = `
-                        <td class="py-3 px-6 whitespace-nowrap">${dateToDisplay}</td>
-                        <td class="py-3 px-6 whitespace-nowrap font-semibold ${typeClass}">${
-          tx.type === "sale" ? "JUAL" : "BELI"
-        }</td>
-                        <td class="py-3 px-6 text-sm">
-                            <span class="font-semibold">Nama:</span> ${
-                              tx.clientName || "-"
-                            } <br> 
-                            Isi: ${fishDetails || "-"} <br>
-                            <span class="font-semibold">Tujuan:</span> ${
-                              tx.destination || "-"
-                            } 
-                        </td>
-                        <td class="py-3 px-6 whitespace-nowrap font-bold">
-                            Paket: IDR ${packagePrice.toLocaleString(
-                              "id-ID"
-                            )} <br>
-                            Ongkir: IDR ${shippingCost.toLocaleString(
-                              "id-ID"
-                            )} <br>
-                            <hr class="my-1 border-gray-300">
-                            <span class="${typeClass}">TOTAL: IDR ${totalTransactionValue.toLocaleString(
-          "id-ID"
-        )}</span>
-                        </td>
-                        <td class="py-3 px-6 text-center whitespace-nowrap">
-                            <button onclick="editTransaction('${
-                              tx.id
-                            }')" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-1 px-3 rounded text-sm focus:outline-none focus:shadow-outline mr-2">
-                                Edit
-                            </button>
-                            <button onclick="generateInvoice('${
-                              tx.id
-                            }')" class="bg-yellow-500 hover:bg-yellow-700 text-white font-bold py-1 px-3 rounded text-sm focus:outline-none focus:shadow-outline mr-2">
-                                Nota
-                            </button>
-                            <button onclick="deleteTransaction('${
-                              tx.id
-                            }')" class="bg-red-500 hover:bg-red-700 text-white font-bold py-1 px-3 rounded text-sm focus:outline-none focus:shadow-outline">
-                                Hapus
-                            </button>
-                        </td>
-                    `;
-        if (index % 2 === 0) {
-          row.classList.add("bg-gray-50");
-        }
-      }
-    });
-
-    if (totalBalanceEl) {
-      totalBalanceEl.textContent = `IDR ${totalBalance.toLocaleString(
-        "id-ID"
-      )}`;
-      totalBalanceEl.classList.remove(
-        "text-blue-600",
-        "text-green-600",
-        "text-red-600"
-      );
-      if (totalBalance < 0) {
-        totalBalanceEl.classList.add("text-red-600");
-      } else if (totalBalance > 0) {
-        totalBalanceEl.classList.add("text-green-600");
-      } else {
-        totalBalanceEl.classList.add("text-blue-600");
-      }
-    }
+    // Terapkan filter dan render tampilan
+    applyFiltersAndPagination();
   } catch (error) {
     console.error("Error fetching transactions: ", error);
-    // Hanya tampilkan error koneksi jika sudah login
     if (auth.currentUser) {
       Swal.fire({
         title: "Koneksi Error",
@@ -753,6 +723,312 @@ async function fetchAndRenderTransactions() {
         icon: "error",
       });
     }
+  } finally {
+    hideLoading();
+  }
+}
+
+// -----------------------------------------------------
+// 2. Fungsi Menerapkan Filter, Search, dan Pagination
+// -----------------------------------------------------
+function applyFiltersAndPagination() {
+  if (!allTransactions.length) {
+    if (tableBody)
+      tableBody.innerHTML =
+        '<tr><td colspan="5" class="py-6 text-center text-gray-500">Belum ada data transaksi.</td></tr>';
+    if (paginationInfo) paginationInfo.textContent = "0 data";
+    if (prevPageBtn) prevPageBtn.disabled = true;
+    if (nextPageBtn) nextPageBtn.disabled = true;
+    if (totalBalanceEl) totalBalanceEl.textContent = "IDR 0"; // Reset saldo
+    return;
+  }
+
+  // 1. FILTERING & SEARCHING
+  const filterType = filterSelect ? filterSelect.value : "all";
+  const searchTerm = searchInput ? searchInput.value.toLowerCase().trim() : "";
+
+  filteredTransactions = allTransactions.filter((tx) => {
+    // Filter Jenis (sale, purchase, atau all)
+    if (filterType !== "all" && tx.type !== filterType) {
+      return false;
+    }
+
+    // Search
+    if (searchTerm) {
+      const clientName = (tx.clientName || "").toLowerCase();
+      const destination = (tx.destination || "").toLowerCase();
+
+      // Buat teks isi paket untuk pencarian
+      const fishDetailsText = (tx.packageContent || [])
+        .map((item) => {
+          let itemName = item.type;
+          if (itemName.startsWith("other:")) {
+            itemName = item.type.substring(6);
+          } else {
+            itemName =
+              FISH_VARIETIES.find((f) => f.id === item.type)?.name || item.type;
+          }
+          return itemName;
+        })
+        .join(" ")
+        .toLowerCase();
+
+      // Cek apakah search term ada di Nama, Tujuan, atau Isi Paket
+      if (
+        !clientName.includes(searchTerm) &&
+        !destination.includes(searchTerm) &&
+        !fishDetailsText.includes(searchTerm)
+      ) {
+        return false;
+      }
+    }
+
+    return true;
+  });
+
+  // 2. PERHITUNGAN SALDO (Diambil dari SEMUA transaksi)
+  let totalBalance = 0;
+  allTransactions.forEach((tx) => {
+    const packagePrice = tx.packagePrice || 0;
+    if (tx.type === "sale") {
+      totalBalance += packagePrice;
+    } else {
+      totalBalance -= packagePrice;
+    }
+  });
+
+  if (totalBalanceEl) {
+    totalBalanceEl.textContent = `IDR ${totalBalance.toLocaleString("id-ID")}`;
+    totalBalanceEl.classList.remove(
+      "text-blue-600",
+      "text-green-600",
+      "text-red-600"
+    );
+    if (totalBalance < 0) {
+      totalBalanceEl.classList.add("text-red-600");
+    } else if (totalBalance > 0) {
+      totalBalanceEl.classList.add("text-green-600");
+    } else {
+      totalBalanceEl.classList.add("text-blue-600");
+    }
+  }
+
+  // 3. PAGINATION
+  const totalPages = Math.ceil(filteredTransactions.length / rowsPerPage);
+
+  // Koreksi halaman jika keluar batas
+  if (currentPage > totalPages && totalPages > 0) {
+    currentPage = totalPages;
+  }
+  if (currentPage < 1 && totalPages > 0) {
+    currentPage = 1;
+  } else if (totalPages === 0) {
+    currentPage = 1;
+  }
+
+  const start = (currentPage - 1) * rowsPerPage;
+  const end = start + rowsPerPage;
+  const transactionsToDisplay = filteredTransactions.slice(start, end);
+
+  // 4. RENDERING
+  if (tableBody) tableBody.innerHTML = "";
+
+  if (transactionsToDisplay.length === 0) {
+    if (tableBody)
+      tableBody.innerHTML =
+        '<tr><td colspan="5" class="py-6 text-center text-gray-500">Tidak ada transaksi yang cocok dengan kriteria pencarian/filter.</td></tr>';
+  } else {
+    transactionsToDisplay.forEach((tx, index) => {
+      const packagePrice = tx.packagePrice || 0;
+      const shippingCost = tx.shippingCost || 0;
+      const totalTransactionValue = packagePrice + shippingCost;
+      const packageContent = tx.packageContent || [];
+
+      const fishDetails = packageContent
+        .map((item) => {
+          let itemName = item.type;
+          if (itemName.startsWith("other:")) {
+            itemName = item.type.substring(6);
+          } else {
+            itemName =
+              FISH_VARIETIES.find((f) => f.id === item.type)?.name || item.type;
+          }
+          return `${item.count}x ${itemName}`;
+        })
+        .join(", ");
+
+      let dateToDisplay = "N/A";
+      if (tx.timestamp && typeof tx.timestamp.toDate === "function") {
+        dateToDisplay = new Date(tx.timestamp.toDate()).toLocaleString("id-ID");
+      } else if (tx.timestamp) {
+        dateToDisplay = new Date(tx.timestamp).toLocaleString("id-ID");
+      }
+
+      const row = tableBody.insertRow();
+      const typeClass = tx.type === "sale" ? "text-green-600" : "text-red-600";
+
+      row.innerHTML = `
+                <td class="py-3 px-6 whitespace-nowrap">${dateToDisplay}</td>
+                <td class="py-3 px-6 whitespace-nowrap font-semibold ${typeClass}">${
+        tx.type === "sale" ? "JUAL" : "BELI"
+      }</td>
+                <td class="py-3 px-6 text-sm min-w-[250px]">
+                    <span class="font-semibold">Nama:</span> ${
+                      tx.clientName || "-"
+                    } <br> 
+                    <span class="font-semibold">Isi:</span> ${
+                      fishDetails || "-"
+                    } <br>
+                    <span class="font-semibold">Tujuan:</span> ${
+                      tx.destination || "-"
+                    } 
+                </td>
+                <td class="py-3 px-6 whitespace-nowrap font-bold">
+                    Paket: IDR ${packagePrice.toLocaleString("id-ID")} <br>
+                    Ongkir: IDR ${shippingCost.toLocaleString("id-ID")} <br>
+                    <hr class="my-1 border-gray-300">
+                    <span class="${typeClass}">TOTAL: IDR ${totalTransactionValue.toLocaleString(
+        "id-ID"
+      )}</span>
+                </td>
+                <td class="py-3 px-6 text-center whitespace-nowrap">
+                    <button onclick="editTransaction('${
+                      tx.id
+                    }')" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-1 px-3 rounded text-sm focus:outline-none focus:shadow-outline mr-2">
+                        Edit
+                    </button>
+                    <button onclick="generateInvoice('${
+                      tx.id
+                    }')" class="bg-yellow-500 hover:bg-yellow-700 text-white font-bold py-1 px-3 rounded text-sm focus:outline-none focus:shadow-outline mr-2">
+                        Nota
+                    </button>
+                    <button onclick="deleteTransaction('${
+                      tx.id
+                    }')" class="bg-red-500 hover:bg-red-700 text-white font-bold py-1 px-3 rounded text-sm focus:outline-none focus:shadow-outline">
+                        Hapus
+                    </button>
+                </td>
+            `;
+      if (index % 2 === 0) {
+        row.classList.add("bg-gray-50");
+      }
+    });
+  }
+
+  // 5. UPDATE KONTROL PAGINATION
+  if (paginationInfo) {
+    const totalFiltered = filteredTransactions.length;
+    const displayStart = totalFiltered > 0 ? start + 1 : 0;
+    const displayEnd = Math.min(end, totalFiltered);
+    paginationInfo.textContent = `Menampilkan ${displayStart} sampai ${displayEnd} dari ${totalFiltered} data`;
+  }
+
+  if (prevPageBtn) prevPageBtn.disabled = currentPage === 1;
+  if (nextPageBtn)
+    nextPageBtn.disabled = currentPage === totalPages || totalPages === 0;
+}
+
+// -----------------------------------------------------
+// FUNGSI EXPORT DATA KE CSV
+// -----------------------------------------------------
+
+function exportToCsv() {
+  if (filteredTransactions.length === 0) {
+    Swal.fire({
+      title: "Tidak Ada Data",
+      text: "Tidak ada transaksi yang cocok dengan filter saat ini untuk diexport.",
+      icon: "info",
+    });
+    return;
+  }
+
+  // 1. Tentukan Header CSV
+  const headers = [
+    "ID Transaksi",
+    "Waktu",
+    "Jenis",
+    "Nama Klien",
+    "Tujuan",
+    "Isi Paket (Detail)",
+    "Harga Paket (IDR)",
+    "Biaya Ongkir (IDR)",
+    "Total Transaksi (IDR)",
+  ];
+
+  let csvContent = headers.join(",") + "\n"; // Tambahkan header, dipisahkan koma
+
+  // 2. Map Data Transaksi ke Baris CSV
+  filteredTransactions.forEach((tx) => {
+    const packagePrice = tx.packagePrice || 0;
+    const shippingCost = tx.shippingCost || 0;
+    const totalTransactionValue = packagePrice + shippingCost;
+
+    let dateToDisplay = "N/A";
+    if (tx.timestamp && typeof tx.timestamp.toDate === "function") {
+      dateToDisplay = new Date(tx.timestamp.toDate()).toLocaleString("id-ID");
+    } else if (tx.timestamp) {
+      dateToDisplay = new Date(tx.timestamp).toLocaleString("id-ID");
+    }
+
+    // Konversi Isi Paket ke format string yang mudah dibaca untuk CSV
+    const fishDetails = (tx.packageContent || [])
+      .map((item) => {
+        let itemName = item.type;
+        if (itemName.startsWith("other:")) {
+          itemName = item.type.substring(6);
+        } else {
+          itemName =
+            FISH_VARIETIES.find((f) => f.id === item.type)?.name || item.type;
+        }
+        // Format: "Jumlah x Nama Ikan"
+        return `${item.count}x ${itemName}`;
+      })
+      // Gabungkan detail paket, dan bungkus dengan kutip dua jika mengandung koma
+      .join(" | ");
+
+    // 3. Susun Baris Data
+    const rowData = [
+      `'${tx.id}'`, // Kutip satu untuk menjaga ID agar tidak diubah formatnya oleh Excel
+      `"${dateToDisplay}"`,
+      tx.type === "sale" ? "JUAL" : "BELI",
+      // Pastikan data yang mungkin mengandung koma dibungkus kutip dua (CSV standard)
+      `"${(tx.clientName || "N/A").replace(/"/g, '""')}"`,
+      `"${(tx.destination || "N/A").replace(/"/g, '""')}"`,
+      `"${fishDetails.replace(/"/g, '""')}"`,
+      packagePrice,
+      shippingCost,
+      totalTransactionValue,
+    ];
+
+    // Gabungkan elemen baris, dipisahkan koma
+    csvContent += rowData.join(",") + "\n";
+  });
+
+  // 4. Buat File dan Unduh
+  const today = new Date().toISOString().slice(0, 10);
+  const filename = `dakata_transaksi_export_${today}.csv`;
+
+  // Gunakan BOM (Byte Order Mark) untuk memastikan Excel membuka file dengan encoding UTF-8 (agar karakter khusus aman)
+  const blob = new Blob(["\ufeff" + csvContent], {
+    type: "text/csv;charset=utf-8;",
+  });
+
+  const link = document.createElement("a");
+  if (link.download !== undefined) {
+    const url = URL.createObjectURL(blob);
+    link.setAttribute("href", url);
+    link.setAttribute("download", filename);
+    link.style.visibility = "hidden";
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url); // Bersihkan URL objek
+  } else {
+    Swal.fire({
+      title: "Error Browser",
+      text: "Browser Anda tidak mendukung fitur unduhan otomatis.",
+      icon: "error",
+    });
   }
 }
 
@@ -841,6 +1117,8 @@ async function handleFormSubmission(e) {
     packageContent: packageContent,
   };
 
+  showLoading();
+
   try {
     if (isEditMode && currentEditId) {
       // Update mode
@@ -861,28 +1139,22 @@ async function handleFormSubmission(e) {
 
       Swal.fire({
         title: "Berhasil!",
-        text: "Transaksi berhasil dicatat.",
+        text: "Transaksi baru berhasil dicatat.",
         icon: "success",
       });
-      form.reset();
-      deleteFishInputs();
-      addFishInput();
-    }
-  } catch (error) {
-    console.error(
-      `Error ${isEditMode ? "updating" : "adding"} document: `,
-      error
-    );
 
+      resetForm();
+    }
+
+    fetchTransactions();
+  } catch (error) {
+    console.error("Error saving transaction: ", error);
     Swal.fire({
       title: "Gagal!",
-      text: `Gagal ${
-        isEditMode ? "memperbarui" : "menyimpan"
-      } transaksi. Cek konfigurasi dan aturan Firebase Anda.`,
+      text: `Gagal mencatat transaksi: ${error.message}`,
       icon: "error",
     });
-    return;
+  } finally {
+    hideLoading();
   }
-
-  fetchAndRenderTransactions();
 }
