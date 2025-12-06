@@ -123,3 +123,20 @@ body {
   height: 90px;
   opacity: 0.2;
 }
+
+/* style.css */
+
+@keyframes slideInUpFade {
+  from {
+    opacity: 0;
+    transform: translateY(20px); /* Geser dari bawah 20px */
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-slide-up {
+  animation: slideInUpFade 0.7s ease-out forwards; /* Durasi 0.7 detik, percepatan lembut */
+}
