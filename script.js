@@ -50,6 +50,13 @@ let currentEditId = null;
 let transactionChart; // Variabel untuk menyimpan instance Chart.js
 let chartYearFilter, chartTypeSelect; // DOM elements Grafik
 
+// --- VARIABEL NAVIGASI BARU DAKATA (PENYESUAIAN) ---
+let dakataMainContainer; // Kontainer utama, tanpa form input
+let transactionPageContainer; // Kontainer khusus untuk form input transaksi
+let actionCardContainer; // Kontainer card aksi di halaman utama (opsional, tergantung markup)
+let inputTransactionBtn; // Tombol "Input Transaksi Baru"
+let closeTransactionInputBtn; // Tombol "Batal" di halaman form
+
 // =========================================================
 // VARIABEL REKENING PRIBADI
 // =========================================================
@@ -58,7 +65,7 @@ let personalFinanceBtn,
   personalContainer,
   personalForm,
   personalTransactionsList,
-  dakattaHomeBtn;
+  dakattaHomeBtn; // Ini berfungsi sebagai backToHomeBtn
 let personalBalanceContainer;
 let allPersonalTransactions = [];
 let filteredPersonalTransactions = [];
@@ -136,6 +143,8 @@ function toggleApp(loggedIn, user) {
     // Logika saat LOGOUT
     if (appContainer) appContainer.classList.add("hidden");
     if (personalContainer) personalContainer.classList.add("hidden");
+    if (transactionPageContainer)
+      transactionPageContainer.classList.add("hidden"); // Tambah ini
     loginContainer.classList.remove("hidden");
 
     if (personalFinanceBtn) personalFinanceBtn.classList.add("hidden");
@@ -289,6 +298,17 @@ function initializeDOMElements() {
   chartYearFilter = document.getElementById("chart-year-filter");
   chartTypeSelect = document.getElementById("chart-type-select");
 
+  // --- DOM Elements NAVIGASI BARU DAKATA (PENYESUAIAN) ---
+  dakataMainContainer = document.getElementById("dakata-main-container");
+  transactionPageContainer = document.getElementById(
+    "transaction-page-container"
+  );
+  actionCardContainer = document.getElementById("action-card-container");
+  inputTransactionBtn = document.getElementById("inputTransactionBtn");
+  closeTransactionInputBtn = document.getElementById(
+    "closeTransactionInputBtn"
+  );
+
   // DOM Elements REKENING PRIBADI
   personalFinanceBtn = document.getElementById("personalFinanceBtn");
   personalContainer = document.getElementById("personal-container");
@@ -351,6 +371,16 @@ function initializeDOMElements() {
     chartYearFilter.addEventListener("change", renderTransactionChart);
   if (chartTypeSelect)
     chartTypeSelect.addEventListener("change", renderTransactionChart);
+
+  // --- EVENT LISTENERS NAVIGASI BARU DAKATA (PENYESUAIAN) ---
+  if (inputTransactionBtn)
+    inputTransactionBtn.addEventListener("click", () =>
+      switchView("inputForm")
+    );
+  if (closeTransactionInputBtn)
+    closeTransactionInputBtn.addEventListener("click", () =>
+      switchView("main")
+    );
 
   // EVENT LISTENERS REKENING PRIBADI
   if (personalFinanceBtn)
@@ -1050,6 +1080,7 @@ window.generateInvoice = async function (id) {
     const totalAmount = packagePrice + shippingCost;
 
     const SHOP_NAME = "DAKATA Aquatic";
+    // PATH INI HARUS SESUAI DENGAN LOKASI LOGO ANDA
     const LOGO_PATH = "logo.png";
 
     let dateToDisplay = new Date().toLocaleDateString("id-ID", {
@@ -1290,7 +1321,8 @@ async function handleFormSubmission(e) {
         icon: "success",
       });
 
-      resetForm();
+      // --- PENYESUAIAN NAVIGASI: Kembali ke halaman utama setelah edit ---
+      switchView("main");
     } else {
       // New entry mode
       transactionData.timestamp =
@@ -1303,10 +1335,10 @@ async function handleFormSubmission(e) {
         icon: "success",
       });
 
-      resetForm();
+      // --- PENYESUAIAN NAVIGASI: Kembali ke halaman utama setelah submit baru ---
+      switchView("main");
     }
-
-    fetchTransactions();
+    // fetchTransactions() dipanggil di dalam switchView("main")
   } catch (error) {
     console.error("Error saving transaction: ", error);
     Swal.fire({
@@ -1392,7 +1424,8 @@ window.editTransaction = async function (id) {
 
     renderFishInputs(tx.packageContent);
 
-    window.scrollTo({ top: 0, behavior: "smooth" });
+    // --- PENYESUAIAN NAVIGASI: Pindah ke tampilan form input untuk edit ---
+    switchView("inputForm");
   } catch (error) {
     console.error("Error fetching document for edit: ", error);
     Swal.fire({
@@ -1401,44 +1434,62 @@ window.editTransaction = async function (id) {
       icon: "error",
     });
   } finally {
-    hideLoading();
+    // hideLoading() dipanggil di switchView("inputForm")
   }
 };
 
 // =========================================================
-// LOGIKA REKENING PRIBADI
+// LOGIKA REKENING PRIBADI & NAVIGASI (PENYESUAIAN)
 // =========================================================
 
 /**
- * Fungsi untuk mengganti tampilan antara DAKATA Main dan Rekening Pribadi
+ * Fungsi untuk mengganti tampilan antara DAKATA Main, DAKATA Input Form, dan Rekening Pribadi
  */
 function switchView(viewName) {
   showLoading();
 
   if (!form) initializeDOMElements();
 
-  if (viewName === "main") {
-    appContainer.classList.remove("hidden");
-    if (personalContainer) personalContainer.classList.add("hidden");
+  // Sembunyikan semua container utama terlebih dahulu
+  appContainer.classList.add("hidden"); // Kontainer utama DAKATA
+  if (personalContainer) personalContainer.classList.add("hidden");
+  if (transactionPageContainer)
+    transactionPageContainer.classList.add("hidden");
+  if (dakataMainContainer) dakataMainContainer.classList.add("hidden");
 
-    if (dakattaHomeBtn) dakattaHomeBtn.classList.add("hidden");
-    if (
-      auth.currentUser &&
-      auth.currentUser.email === ADMIN_EMAIL &&
-      personalFinanceBtn
-    ) {
+  // Pastikan tombol navigasi kembali ke DAKATA/Pribadi disembunyikan
+  if (dakattaHomeBtn) dakattaHomeBtn.classList.add("hidden");
+  if (personalFinanceBtn) personalFinanceBtn.classList.add("hidden");
+
+  if (viewName === "main") {
+    appContainer.classList.remove("hidden"); // Tampilkan container utama DAKATA
+    if (dakataMainContainer) dakataMainContainer.classList.remove("hidden"); // Tampilkan bagian main DAKATA
+
+    // Tampilkan tombol Pribadi hanya jika admin
+    const isOwner = auth.currentUser && auth.currentUser.email === ADMIN_EMAIL;
+    if (personalFinanceBtn && isOwner) {
       personalFinanceBtn.classList.remove("hidden");
     }
 
-    fetchTransactions();
+    fetchTransactions(); // Muat ulang data DAKATA
+    resetForm(); // Pastikan form bersih
   } else if (viewName === "personal") {
-    appContainer.classList.add("hidden");
     if (personalContainer) personalContainer.classList.remove("hidden");
+    if (dakattaHomeBtn) dakattaHomeBtn.classList.remove("hidden"); // Tampilkan tombol kembali ke DAKATA
+    fetchPersonalTransactions(); // Muat ulang data Pribadi
+  } else if (viewName === "inputForm") {
+    appContainer.classList.remove("hidden"); // Tampilkan container utama DAKATA
+    if (transactionPageContainer)
+      transactionPageContainer.classList.remove("hidden"); // Tampilkan form input
 
-    if (dakattaHomeBtn) dakattaHomeBtn.classList.remove("hidden");
-    if (personalFinanceBtn) personalFinanceBtn.classList.add("hidden");
+    // Tombol pribadi dan logout DAKATA tetap terlihat di header
+    const isOwner = auth.currentUser && auth.currentUser.email === ADMIN_EMAIL;
+    if (personalFinanceBtn && isOwner) {
+      personalFinanceBtn.classList.remove("hidden");
+    }
 
-    fetchPersonalTransactions();
+    hideLoading(); // Form input tidak memanggil fetch
+    return;
   } else {
     hideLoading();
   }
