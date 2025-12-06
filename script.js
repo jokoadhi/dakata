@@ -374,13 +374,25 @@ function initializeDOMElements() {
 
   // --- EVENT LISTENERS NAVIGASI BARU DAKATA (PENYESUAIAN) ---
   if (inputTransactionBtn)
-    inputTransactionBtn.addEventListener("click", () =>
-      switchView("inputForm")
-    );
+    inputTransactionBtn.addEventListener("click", () => {
+      showLoading(); // Tampilkan loading
+      // Gunakan setTimeout untuk memastikan loading tampil, lalu pindah view
+      setTimeout(() => {
+        // Mengganti alias 'inputForm' dengan ID container yang benar
+        switchView("inputForm");
+        hideLoading(); // Sembunyikan loading
+      }, 100);
+    });
+
   if (closeTransactionInputBtn)
-    closeTransactionInputBtn.addEventListener("click", () =>
-      switchView("main")
-    );
+    closeTransactionInputBtn.addEventListener("click", () => {
+      showLoading(); // Tampilkan loading
+      setTimeout(() => {
+        // Mengganti alias 'main' dengan ID container yang benar
+        switchView("main");
+        hideLoading(); // Sembunyikan loading
+      }, 100);
+    });
 
   // EVENT LISTENERS REKENING PRIBADI
   if (personalFinanceBtn)
